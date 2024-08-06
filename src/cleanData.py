@@ -1,7 +1,7 @@
 import pandas as pd
 import re
 
-df = pd.read_csv('sample_6k_reviews_for_RA.csv')
+df = pd.read_csv('../data/sample_6k_reviews_for_RA.csv')
 
 # Distinguish each columns
 reviewText = df['reviewText']
@@ -27,4 +27,4 @@ if __name__ == "__main__":
 
     # Create an another .csv file: cleanedReviewWithLabels.csv
     cleaned_review_df = df[['cleanedReviewText', 'incentivized_999']]
-    cleaned_review_df.to_csv('./cleaned_reviews_with_labels.csv', index=False)
+    cleaned_review_df.to_csv('../data/cleaned_reviews_with_labels.csv', index=False)

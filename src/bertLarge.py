@@ -1,18 +1,21 @@
 # import all necessary modules
-import torch.nn as nn
-import torch
-from transformers import AutoModel, AutoTokenizer
-import csv
+import os
 import pandas as pd
+import re
+from transformers import BertTokenizer, BertForSequenceClassification
+from sklearn.model_selection import train_test_split
+import torch
 
-# Load BERT Large (cased)
+# BERT Large (cased)
 # Input size: 512 Tokens (Max)
-model = AutoModel.from_pretrained("bert-large-cased")
-tokenizer = AutoTokenizer.from_pretrained('bert-large-cased')
+model = BertForSequenceClassification.from_pretrained('bert-large-cased', num_labels=2)
+tokenizer = BertTokenizer.from_pretrained('bert-large-cased')
 
-# No tokenization necessary in this case --> input is the sentence
+# Load sample data set with incentivized reviews as pd.DataFrame
+df = pd.read_csv('sample_6k_reviews_for_RA.csv')
 
-dataset = pd.read_csv("sample_6k_reviews_for_RA.csv")
+# Split the data into training and test sets:
+train_text, test_text, train_label, test_label = train_test_split()
 
 # Tokenize input text
 input_text = "This is an example sentence."

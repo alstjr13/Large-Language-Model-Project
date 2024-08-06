@@ -32,9 +32,43 @@ train_text, test_text, train_label, test_label = train_test_split(df['cleanedRev
 # Input size: 512 Tokens (Max)
 #pipe = pipeline("question-answering", model="google-bert/bert-large-cased-whole-word-masking-finetuned-squad")
 
-model_name = "google-bert/bert-large-cased-whole-word-masking-finetuned-squad"
+#model_name = "google-bert/bert-large-cased-whole-word-masking-finetuned-squad"
+model_name = 'bert-large-cased'
 tokenizer = BertTokenizer.from_pretrained(model_name)
 model = BertForSequenceClassification.from_pretrained(model_name, num_labels=2)
 #tokenizer = AutoTokenizer.from_pretrained("google-bert/bert-large-cased-whole-word-masking-finetuned-squad")
 #model = AutoModelForQuestionAnswering.from_pretrained("google-bert/bert-large-cased-whole-word-masking-finetuned-squad")
+
+#print(model)
+
+class ReviewDataset(Dataset):
+    def __init__(self, texts, labels, tokenizer, max_length = 512):
+        self.texts = texts,
+        self.labels = labels,
+        self.tokenizer = tokenizer,
+        self.max_length = max_length
+    def __len__(self):
+        return len(self.texts)
+
+    def __getitem__(self, idx):
+        text = self.texts[idx],
+        label = self.labels[idx],
+        encodings = self.tokenizer.encode_plus(
+            text,
+            max_length = self.max_length,
+            return_tensors = "pt",
+            truncation = False
+        )
+        return {
+            'texts': text,
+            "input_ids": encodings['input_ids'].flatten(),
+            "attention_mask": encodings['attention_mask'].flatten(),
+            'label': torch.tensor(label, dtype=torch.long)
+        }
+
+train_dataset = ReviewDataset(train_text.tolist(), train_label.tolist(), tokenizer)
+test_dataset = ReviewDataset(test_text.tolist(), train_label.tolist(), tokenizer)
+
+model.train()
+#print(train_dataset)
 

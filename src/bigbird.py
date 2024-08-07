@@ -1,17 +1,9 @@
-# TODO
-# Make 5 figures of epoch = 1,2,3 and test of the following criterias:
-# 1. Accuracy
-# 2. Precision
-# 3. Recall
-# 4. F1 Score
-# 5. AUC
-
 import os
 os.environ['PYTORCH_MPS_HIGH_WATERMARK_RATIO'] = '0.0'
 
 import pandas as pd
 from torch.utils.data import Dataset
-from transformers import BertTokenizer, BertForSequenceClassification, Trainer, TrainingArguments
+from transformers import AutoTokenizer, AutoModelForSequenceClassification, Trainer, TrainingArguments
 import torch
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, roc_auc_score, precision_recall_fscore_support, precision_score, \
@@ -59,7 +51,7 @@ print(y_test.shape)
 # 3. tokenizer: BERT-Large Tokenizer
 # 4. max_length: set default to 512
 class ReviewsDataset(Dataset):
-    def __init__(self, texts, labels, tokenizer, max_length=512):
+    def __init__(self, texts, labels, tokenizer, max_length=4096):
         self.texts = texts
         self.labels = labels
         self.tokenizer = tokenizer
@@ -85,19 +77,19 @@ class ReviewsDataset(Dataset):
             'labels': torch.tensor(label, dtype=torch.long)
         }
 
-# Initialize BERT-large Tokenizer with maxlength = 512
-tokenizer = BertTokenizer.from_pretrained('bert-large-cased')
-max_length = 512
+# Initialize Bigbird-RoBERTa-large Tokenizer with maxlength =
+tokenizer = AutoTokenizer.from_pretrained('google/bigbird-roberta-large')
+max_length = 4096
 
 # Datasets to feed into BERT-Large
 train_dataset = ReviewsDataset(X_train.tolist(), y_train.tolist(), tokenizer, max_length)
 test_dataset = ReviewsDataset(X_test.tolist(), y_test.tolist(), tokenizer, max_length)
 
 # Initialize BERT-large
-model = BertForSequenceClassification.from_pretrained('bert-large-cased', num_labels=2)
+model = AutoModelForSequenceClassification.from_pretrained('google/bigbird-roberta-large', num_labels=2)
 
 training_args = TrainingArguments(
-    output_dir='./results/bert',
+    output_dir='./results/bigbird',
     num_train_epochs=3,
     per_device_train_batch_size=8,
     per_device_eval_batch_size=8,
@@ -134,17 +126,25 @@ trainer = Trainer(
     compute_metrics=compute_metrics
 )
 
-# Initialize empty list to store the metrics for each epoch
-metrics_per_epoch = []
 
+# Train the model
+print("Training the model")
+#trainer.train()
+
+# Evaluate the model
+print("Evaluating the model")
+#evaluation_results = trainer.evaluate()
+
+# Plot the results
+
+# Store the metrics for each epoch
+metrics_per_epoch = []
 # Custom training loop to get metrics after each epoch
 for epoch in range(training_args.num_train_epochs):
     trainer.train()
     print("Training the model")
     eval_metrics = trainer.evaluate()
-    print("Evaluating the model")
     metrics_per_epoch.append(eval_metrics)
-    print("Storing the output into metrics_per_epoch")
     print(f"Epoch {epoch+1} - {eval_metrics}")
 
 # Final evaluation on the test set
@@ -191,3 +191,16 @@ def plot_metrics(metrics_per_epoch):
     plt.show()
 
 plot_metrics(metrics_per_epoch)
+
+
+
+
+print("")
+print(evaluation_results)
+
+
+
+
+
+
+

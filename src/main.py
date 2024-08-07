@@ -1,5 +1,12 @@
 import numpy as np
 import math
+import matplotlib.pyplot as plt
+import tensorflow as tf
+
+
+# Checking for the GPU
+device_name = tf.test.gpu_device_name()
+print(device_name)
 
 # Project with BERT large, Bigbird-RoBERTa-large, Longformer
 
@@ -12,5 +19,5 @@ import math
 # 5. AUC
 # Epoch 1,2,3 test
 
-if __name__ == "__main__":
-    print("hello world")
+#if __name__ == "__main__":
+#    print("hello world")

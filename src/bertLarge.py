@@ -130,6 +130,7 @@ class BertReview:
 
 
 
+
 processor = BertReview(df)
 
 

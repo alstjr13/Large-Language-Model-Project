@@ -8,6 +8,8 @@ reviewText = df['reviewText']
 incentivized_label = df['incentivized_999']
 
 # Function to remove the sentence with ("free" or "discount" or "reduced") in df["reviewText"]
+# 왜 1로 레이블을
+
 def remove_incentivized_sentence(text):
     # Add more patterns if needed
     patterns = [

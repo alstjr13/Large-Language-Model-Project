@@ -49,7 +49,7 @@ print(y_test.shape)
 # 1. texts:  reviews of the users (either incentivized or unincentivized - labelled with 0 or 1)
 # 2. labels: corresponding label value --> 0 or 1
 # 3. tokenizer: BERT-Large Tokenizer
-# 4. max_length: set default to 512
+# 4. max_length: set default to 4096
 class ReviewsDataset(Dataset):
     def __init__(self, texts, labels, tokenizer, max_length=4096):
         self.texts = texts
@@ -95,7 +95,7 @@ training_args = TrainingArguments(
     per_device_eval_batch_size=8,
     warmup_steps=500,
     weight_decay=0.01,
-    logging_dir='./logs',
+    logging_dir='./logs/bigbird',
     logging_steps=10,
     eval_strategy="epoch"
 )

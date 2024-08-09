@@ -123,18 +123,20 @@ training_args = TrainingArguments(
     do_train= True,
     do_eval= True,
 
-    # Alter
+    # Alter:
     adam_beta1=0.9,
     adam_beta2=0.999,
     learning_rate=3e-5,
-    num_train_epochs=3,
     per_device_train_batch_size=8,
     per_device_eval_batch_size=8,
+
+    # Fixed:
+    logging_dir='./logs/bert',
+    num_train_epochs=3,
+    eval_strategy="epoch",
     warmup_steps=500,
     weight_decay=0.01,
-    logging_dir='./logs/bert',
-    logging_steps=10,
-    eval_strategy="epoch"
+    logging_steps=10
 )
 def compute_metrics(p):
     pred = p.predictions.argmax(-1)
@@ -145,9 +147,11 @@ def compute_metrics(p):
     recall = recall_score(p.label_ids, pred, average='weighted')
     f1 = f1_score(p.label_ids, pred, average='weighted')
     roc_auc = roc_auc_score(p.label_ids, clf.decision_function(X))
-    #precision, recall, f1, _ = precision_recall_fscore_support(p.label_ids, pred, average='binary')
-    #accuracy = accuracy_score(p.label_ids, pred)
-    #roc_auc = roc_auc_score(p.label_ids, p.predictions[:, 1])
+    print(f"Accuracy: {accuracy},"
+          f"Precision: {precision},"
+          f"Recall: {recall},"
+          f"F1 Score: {f1},"
+          f"AUC: {roc_auc}")
     return {
         'accuracy': accuracy,
         'precision': precision,

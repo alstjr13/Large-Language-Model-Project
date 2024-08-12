@@ -1,83 +1,81 @@
-# TODO
-# Make 5 figures of epoch = 1,2,3 and test of the following criterias:
-# 1. Accuracy
-# 2. Precision
-# 3. Recall
-# 4. F1 Score
-# 5. AUC
-
-# TODO
-# sample_6k_reviews_for_RA_updated.csv -- Regex - incentivized sentence "filtering"
-# Training : Test --> 80 : 20
-# Training -- K-cross validation: k=5
-# validation result --> plot --> matplotlib
-
-# Training loss   -->  PLOT
-# Validation loss -->  PLOT
-# for epoch1, epoch2, epoch3, test (as x-axis)
-# for accuracy, precision, recall, f1 score, auc (as y-axis)
-
-# ex. 100, 200개로 돌렸을때 잘 돌아가는지 확인  --> 잘 돌아가면 6000 --> ~~~
-
-
 import os
 os.environ['PYTORCH_MPS_HIGH_WATERMARK_RATIO'] = '0.0'
 
+import pandas as pd
+from transformers import BertTokenizer, BertForSequenceClassification, Trainer, TrainingArguments
 #TODO
 from sklearn.model_selection import cross_val_score
-
-import pandas as pd
-from torch.utils.data import Dataset
-from transformers import BertTokenizer, BertForSequenceClassification, Trainer, TrainingArguments
-import torch
-from sklearn.model_selection import train_test_split
+from sklearn import datasets, linear_model
 from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, roc_auc_score, precision_recall_fscore_support, precision_score, \
     recall_score, f1_score
+
+from torch.utils.data import Dataset, DataLoader
+
+import torch
+
 import matplotlib.pyplot as plt
 
-
 # Load sample data set with incentivized reviews as pd.DataFrame
-df = pd.read_csv('../data/cleaned_reviews_with_labels.csv')
+filePath = '../data/updated_review_sample_for_RA.csv'
+df = pd.read_csv(filePath)
+
+# Delete any row that has NaN value (i.e. Clean)
+df = df.dropna(subset=["reviewText"])               # Store dropped rows in an another .csv file for records
 
 # Randomly select 100 incentivized reviews (Labelled with 1)
 #                 100 not incentivized reviews (Labelled with 0)
 notIncentivized = df[df["incentivized_999"] == 0].sample(n=100, random_state=42)
 incentivized = df[df["incentivized_999"] == 1].sample(n=100, random_state=42)
 
+# CHECK if there is NaN value in the extracted samples:
+#hasNaText = incentivized['reviewText'].isna().any()
+#hasNaLabel = incentivized['incentivized_999'].isna().any()
+#print(hasNaText)
+#print(hasNaLabel)
+#print("Shape of the non-incentivized:", notIncentivized.shape)
+#print("Shape of the incentivized:", incentivized.shape)
 
-hasNaText = incentivized['cleanedReviewText'].isna().any()
-hasNaLabel = incentivized['incentivized_999'].isna().any()
-print(hasNaText)
-print(hasNaLabel)
 
-hasNaText = notIncentivized['cleanedReviewText'].isna().any()
-hasNaLabel = notIncentivized['incentivized_999'].isna().any()
-print(hasNaText)
-print(hasNaLabel)
-
+# Merge two dataframes and create size = (200 x 3) pd.DataFrame
 newdf = pd.concat([notIncentivized, incentivized])
+
+#hasNaText1 = newdf["reviewText"].isna().any()
+#hasNaLabel1 = newdf["incentivized_999"].isna().any()
+#hasNaHighest = newdf['incent_bert_highest_score_sent'].isna().any()
+#print(hasNaText1)
+#print(hasNaLabel1)
+#print(hasNaHighest)
 newdf = newdf.sample(frac=1, random_state=42).reset_index(drop=True)
+print(newdf.shape)
+
+# Drop newdf['incent_bert_highest_score_sent'] column
+newdf = newdf.drop(['incent_bert_highest_score_sent'], axis=1)
+
+print(newdf)
+print(newdf.shape)
 
 #print(newdf)
 # Split the data
-X = newdf["cleanedReviewText"]
-y = newdf["incentivized_999"]
+#X = newdf["cleanedReviewText"]
+#y = newdf["incentivized_999"]
 
 # Default = 8:2
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+#X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
 
-print(X_train.shape)  # --> k = 5, 또 나눠서
-print(X_test.shape)
-print(y_train.shape)
-print(y_test.shape)
+#print(X_train.shape)  # --> k = 5, 또 나눠서
+#print(X_test.shape)
+#print(y_train.shape)
+#print(y_test.shape)
 
 # Create a ReviewDataset with inputs:
 # 1. texts:  reviews of the users (either incentivized or unincentivized - labelled with 0 or 1)
 # 2. labels: corresponding label value --> 0 or 1
 # 3. tokenizer: BERT-Large Tokenizer
 # 4. max_length: set default to 512
+"""
 class ReviewsDataset(Dataset):
     def __init__(self, texts, labels, tokenizer, max_length=512):
         self.texts = texts
@@ -232,3 +230,4 @@ def plot_metrics(metrics_per_epoch):
     plt.show()
 
 plot_metrics(metrics_per_epoch)
+"""

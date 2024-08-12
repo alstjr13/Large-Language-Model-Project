@@ -1,3 +1,16 @@
+# TODO
+# sample_6k_reviews_for_RA_updated.csv -- Regex - incentivized sentence "filtering"
+# Training : Test --> 80 : 20
+# Training -- K-cross validation: k=5
+# validation result --> plot --> matplotlib
+
+# Training loss   -->  PLOT
+# Validation loss -->  PLOT
+# for epoch1, epoch2, epoch3, test (as x-axis)
+# for accuracy, precision, recall, f1 score, auc (as y-axis)
+
+# ex. 100, 200개로 돌렸을때 잘 돌아가는지 확인  --> 잘 돌아가면 6000 --> ~~~
+
 import pandas as pd
 from torch.optim import AdamW
 from torch.utils.data import Dataset, DataLoader, TensorDataset

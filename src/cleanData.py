@@ -1,32 +1,22 @@
 import pandas as pd
 import re
 
-df = pd.read_csv('../data/sample_6k_reviews_for_RA.csv')
+filePath = '../data/sample_6k_reviews_for_RA_updated.csv'
+df = pd.read_csv(filePath)
+
+def removeIncent(row):
+    if row['incentivized_999'] == 1:
+        return row['reviewText'].replace(row['incent_bert_highest_score_sent'], '')
+    else:
+        return row['reviewText']
 
 # Distinguish each columns
 reviewText = df['reviewText']
 incentivized_label = df['incentivized_999']
 
-# Function to remove the sentence with ("free" or "discount" or "reduced") in df["reviewText"]
-# 왜 1로 레이블을
-
-def remove_incentivized_sentence(text):
-    # Add more patterns if needed
-    patterns = [
-        r'[^\*.(,!?]*\b(free product|free|discount|discounted rate|reduced|reduced price|Disclaimer|\*)\b[^.,!)?]*[.!?]'
-    ]
-    for pattern in patterns:
-        if isinstance(text, str):
-            return re.sub(pattern, "", text, flags=re.IGNORECASE).strip()
-        else:
-            return ''
-
-
-
 if __name__ == "__main__":
-    # Create another column "cleanedReviewText" with incentivized sentence removed
-    df['cleanedReviewText'] = df['reviewText'].apply(remove_incentivized_sentence)
+    # Apply the function removeIncent to all rows of the sample .csv file
+    df['reviewText'] = df.apply(removeIncent, axis=1)
 
-    # Create an another .csv file: cleanedReviewWithLabels.csv
-    cleaned_review_df = df[['cleanedReviewText', 'incentivized_999']]
-    cleaned_review_df.to_csv('../data/cleaned_reviews_with_labels.csv', index=False)
+    # Create an another .csv file (cleaned) to feed into the LLM
+    df.to_csv('../data/updated_review_sample_for_RA.csv', index=False)

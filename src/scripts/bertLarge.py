@@ -124,15 +124,16 @@ training_args = TrainingArguments(
     logging_dir='./logs/bert',
     num_train_epochs=4,
     eval_strategy="epoch",
+    save_strategy="epoch",
     warmup_steps=500,
     weight_decay=0.01,
     logging_steps=5,
-    save_strategy="epoch"
+    load_best_model_at_end=True,
 )
 
-def compute_metrics(p):
-    logits, labels = p
-    probs = torch.nn.functional.softmax(torch.tensor(logits), dim=1)
+def compute_metrics(eval_pred):
+    predictions, labels = eval_pred
+    probs = torch.nn.functional.softmax(torch.tensor(predictions), dim=1)
     pred_labels = torch.argmax(probs, axis=1).numpy()
 
     accuracy = accuracy_score(labels, pred_labels)
@@ -180,6 +181,35 @@ for fold, (train_idx, val_idx) in enumerate(kf.split(X_train)):
     # Create training and validation dataset
     X_train_fold, X_val_fold = X_train[train_idx], X_train[val_idx]
     y_train_fold, y_val_fold = y_train[train_idx], y_train[val_idx]
+
+    train_dataset_fold = ReviewsDataset(X_train_fold, y_train_fold, tokenizer, max_length)
+    val_dataset_fold = ReviewsDataset(X_val_fold, y_val_fold, tokenizer, max_length)
+
+    model = BertForSequenceClassification.from_pretrained('bert-large-cased', num_labels=2)
+
+    training_args_fold = TrainingArguments(
+        output_dir=f"../results/bert_fold_{fold}",
+        overwrite_output_dir=True,
+        do_train=True,
+        do_eval=True,
+
+        # Alter:
+        adam_beta1=0.9,
+        adam_beta2=0.999,
+        learning_rate=1e-7,
+        per_device_train_batch_size=8,
+        per_device_eval_batch_size=8,
+
+        # Fixed:
+        logging_dir=f'../logs/bert_fold_{fold}',
+        num_train_epochs=4,
+        eval_strategy="epoch",
+        save_strategy="epoch",
+        warmup_steps=500,
+        weight_decay=0.01,
+        logging_steps=5,
+        load_best_model_at_end=True,
+    )
 
 
 """

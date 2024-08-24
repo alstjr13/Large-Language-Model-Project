@@ -1,13 +1,16 @@
 import os
-os.environ['PYTORCH_MPS_HIGH_WATERMARK_RATIO'] = '0.0'
-
 import pandas as pd
 from transformers import BertTokenizer, BertForSequenceClassification, Trainer, TrainingArguments
-#TODO
 from sklearn.model_selection import cross_val_score
-from sklearn import datasets, linear_model
-from sklearn.linear_model import LogisticRegression
+from sklearn import datasets
 from sklearn.model_selection import train_test_split
+os.environ['PYTORCH_MPS_HIGH_WATERMARK_RATIO'] = '0.0'
+
+
+#TODO
+
+
+
 from sklearn.metrics import accuracy_score, roc_auc_score, precision_recall_fscore_support, precision_score, \
     recall_score, f1_score
 
@@ -18,7 +21,7 @@ import torch
 import matplotlib.pyplot as plt
 
 # Load sample data set with incentivized reviews as pd.DataFrame
-filePath = '../data/updated_review_sample_for_RA.csv'
+filePath = '../../data/updated_review_sample_for_RA.csv'
 df = pd.read_csv(filePath)
 
 # Delete any row that has NaN value (i.e. Clean)

@@ -1,7 +1,7 @@
 import pandas as pd
 import re
 
-filePath = '../data/sample_6k_reviews_for_RA_updated.csv'
+filePath = '../../data/sample_6k_reviews_for_RA_updated.csv'
 df = pd.read_csv(filePath)
 
 def removeIncent(row):

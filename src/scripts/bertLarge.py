@@ -13,7 +13,6 @@ import torch
 import matplotlib.pyplot as plt
 os.environ['PYTORCH_MPS_HIGH_WATERMARK_RATIO'] = '0.0'
 
-
 #TODO
 
 # Load sample data set with incentivized reviews as pd.DataFrame
@@ -25,8 +24,8 @@ df = df.dropna(subset=["reviewText"])               # Store dropped rows in an a
 
 # Randomly select 100 incentivized reviews (Labelled with 1)
 #                 100 not incentivized reviews (Labelled with 0)
-notIncentivized = df[df["incentivized_999"] == 0].sample(n=10, random_state=42)
-incentivized = df[df["incentivized_999"] == 1].sample(n=10, random_state=42)
+notIncentivized = df[df["incentivized_999"] == 0].sample(n=30, random_state=42)
+incentivized = df[df["incentivized_999"] == 1].sample(n=30, random_state=42)
 
 # CHECK if there is NaN value in the extracted samples:
 hasNaText = incentivized['reviewText'].isna().any()
@@ -38,27 +37,37 @@ print("Shape of the incentivized:", incentivized.shape)             # (10, 3)
 
 # Merge two dataframes and create size = (200 x 3) pd.DataFrame
 newdf = pd.concat([notIncentivized, incentivized])
+newdf = newdf.sample(frac=1, random_state=42).reset_index(drop=True)
+print(newdf.shape)
 
 #newdf = newdf.sample(frac=1, random_state=42).reset_index(drop=True)
 #print(newdf.shape)                                                  # (20, 3)
 
 # Drop newdf['incent_bert_highest_score_sent'] column
 newdf = newdf.drop(['incent_bert_highest_score_sent'], axis=1)
+print(newdf)
+print(newdf.shape)
 
 #print(newdf)
 #print(newdf.shape)                                                  # (20, 2)
+
+# Check for NaN values in the entire DataFrame
+has_nan = newdf.isnull().values.any()
+print(f"Does the DataFrame contain NaN values? {has_nan}")
 
 # Split the data
 X = newdf["reviewText"]
 y = newdf["incentivized_999"]
 
 # Default = 8:2
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, shuffle=True)
 
-#print(X_train.shape)  # --> k = 5, 또 나눠서
-#print(X_test.shape)
-#print(y_train.shape)
-#print(y_test.shape)
+#print(f"X Training Set Distribution: \n {pd.Series(X_train).value_counts()}")
+print(f"Y Training Set Distribution: \n {pd.Series(y_train).value_counts()}")
+#print(f"X Test Set Distribution: \n {pd.Series(X_test).value_counts()}")
+print(f"Y Test Set Distribution: \n {pd.Series(y_test).value_counts()}")
+
+# --------------------------------------------------------------------------------------------------------------------------------
 
 # Create a ReviewDataset with inputs:
 # 1. texts:  reviews of the users (either incentivized or unincentivized - labelled with 0 or 1)
@@ -92,6 +101,13 @@ class ReviewsDataset(Dataset):
             'labels': torch.tensor(label, dtype=torch.long)
         }
 
+class MetricsCallback(TrainerCallback):
+    def __init__(self):
+        self.metrics = []
+    def on_evaluate(self, args, state, control, metrics=None, **kwargs):
+        if metrics:
+            self.metrics.append(metrics)
+
 # --------------------------------------------------------------------------------------------------------------------------------
 
 # Initialize BERT-large model and tokenizer with maxlength = 512
@@ -106,6 +122,9 @@ test_dataset = ReviewsDataset(X_test.tolist(), y_test.tolist(), tokenizer, max_l
 # Cross Validation
 kf = KFold(n_splits=5, shuffle=True, random_state=42)
 
+# Storing metrics
+metrics_callback = MetricsCallback()
+
 #optimizer: Default --> AdamW
 training_args = TrainingArguments(
     output_dir='./results/bert',
@@ -116,9 +135,9 @@ training_args = TrainingArguments(
     # Alter:
     adam_beta1=0.9,
     adam_beta2=0.999,
-    learning_rate=1e-7,
-    per_device_train_batch_size=8,
-    per_device_eval_batch_size=8,
+    learning_rate=2e-5,
+    per_device_train_batch_size=10,
+    per_device_eval_batch_size=10,
 
     # Fixed:
     logging_dir='./logs/bert',
@@ -131,10 +150,11 @@ training_args = TrainingArguments(
     load_best_model_at_end=True,
 )
 
+#TODO
 def compute_metrics(eval_pred):
     predictions, labels = eval_pred
-    probs = torch.nn.functional.softmax(torch.tensor(predictions), dim=1)
-    pred_labels = torch.argmax(probs, axis=1).numpy()
+    #probs = torch.nn.functional.softmax(torch.tensor(predictions), dim=1)
+    pred_labels = torch.argmax(torch.tensor(predictions), axis=1).numpy()
 
     accuracy = accuracy_score(labels, pred_labels)
     precision = precision_score(labels, pred_labels)
@@ -142,11 +162,11 @@ def compute_metrics(eval_pred):
     f1 = f1_score(labels, pred_labels)
     roc_auc = roc_auc_score(labels, pred_labels)
 
-    print(f"Accuracy: {accuracy},"
-          f"Precision: {precision},"
-          f"Recall: {recall},"
-          f"F1 Score: {f1},"
-          f"AUC: {roc_auc}")
+    print(f"Accuracy: {accuracy}, \n"
+          f"Precision: {precision}, \n"
+          f"Recall: {recall}, \n"
+          f"F1 Score: {f1}, \n"
+          f"AUC: {roc_auc} \n")
     return {
         'accuracy': accuracy,
         'precision': precision,
@@ -162,8 +182,20 @@ trainer = Trainer(
     train_dataset=train_dataset,
     eval_dataset=test_dataset,
     tokenizer=tokenizer,
-    compute_metrics=compute_metrics
+    compute_metrics=compute_metrics,
+    callbacks=[metrics_callback]
 )
+
+metrics = []
+
+metrics_dict = {
+    "loss": [],
+    "accuracy": [],
+    "precision": [],
+    "recall": [],
+    "f1": [],
+    "roc_auc": []
+}
 
 # Train
 print("Beginning to train the model")
@@ -173,14 +205,22 @@ trainer.train()
 print("Beginning to evaluate the model")
 eval_metrics = trainer.evaluate()
 
+metrics.append(eval_metrics)
+print(metrics)
+
+#for epoch, epoch_metrics in enumerate(metrics_callback):
+#    print(f"Epoch {epoch + 1} metrics: {epoch_metrics}")
+
+"""
+#TODO
 metrics_kfold = []
 
 for fold, (train_idx, val_idx) in enumerate(kf.split(X_train)):
     print(f"Fold {fold + 1}")
 
     # Create training and validation dataset
-    X_train_fold, X_val_fold = X_train[train_idx], X_train[val_idx]
-    y_train_fold, y_val_fold = y_train[train_idx], y_train[val_idx]
+    X_train_fold, X_val_fold = X_train.iloc[train_idx].tolist(), X_train.iloc[val_idx].tolist()
+    y_train_fold, y_val_fold = y_train.iloc[train_idx].tolist(), y_train.iloc[val_idx].tolist()
 
     train_dataset_fold = ReviewsDataset(X_train_fold, y_train_fold, tokenizer, max_length)
     val_dataset_fold = ReviewsDataset(X_val_fold, y_val_fold, tokenizer, max_length)
@@ -210,6 +250,22 @@ for fold, (train_idx, val_idx) in enumerate(kf.split(X_train)):
         logging_steps=5,
         load_best_model_at_end=True,
     )
+
+    trainer_fold = Trainer(
+        model=model,
+        args=training_args_fold,
+        train_dataset=train_dataset_fold,
+        eval_dataset=val_dataset_fold,
+        tokenizer=tokenizer,
+        compute_metrics=compute_metrics,
+    )
+
+    trainer_fold.train()
+
+    eval_metrics_fold = trainer_fold.evaluate()
+    print(f"Metrics for fold {fold + 1}: {eval_metrics_fold}")
+    metrics_kfold.append(eval_metrics_fold)
+"""
 
 
 """

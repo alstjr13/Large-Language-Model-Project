@@ -1,16 +1,16 @@
 import os
 import pandas as pd
-from transformers import BertTokenizer, BertForSequenceClassification, Trainer, TrainingArguments, TrainerCallback, \
-    TrainerState, TrainerControl
-from sklearn.model_selection import cross_val_score
-from sklearn import datasets
+from transformers import BertTokenizer, BertForSequenceClassification, Trainer, TrainingArguments
+#from sklearn.model_selection import cross_val_score
+#from sklearn import datasets
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import KFold
-from sklearn.metrics import accuracy_score, roc_auc_score, precision_recall_fscore_support, precision_score, \
-    recall_score, f1_score
-from torch.utils.data import Dataset, DataLoader
+from sklearn.metrics import accuracy_score, roc_auc_score, precision_score, recall_score, f1_score
+from torch.utils.data import Dataset
 import torch
 import matplotlib.pyplot as plt
+from sklearn.utils.class_weight import compute_class_weight
+
 os.environ['PYTORCH_MPS_HIGH_WATERMARK_RATIO'] = '0.0'
 
 #TODO
@@ -20,36 +20,30 @@ filePath = '../data/updated_review_sample_for_RA.csv'
 df = pd.read_csv(filePath)
 
 # Delete any row that has NaN value (i.e. Clean)
-df = df.dropna(subset=["reviewText"])               # Store dropped rows in an another .csv file for records
+df = df.dropna(subset=["reviewText"])  # Store dropped rows in an another .csv file for records
 
 # Randomly select 100 incentivized reviews (Labelled with 1)
 #                 100 not incentivized reviews (Labelled with 0)
-notIncentivized = df[df["incentivized_999"] == 0].sample(n=30, random_state=42)
-incentivized = df[df["incentivized_999"] == 1].sample(n=30, random_state=42)
+notIncentivized = df[df["incentivized_999"] == 0].sample(n=10, random_state=42)
+incentivized = df[df["incentivized_999"] == 1].sample(n=10, random_state=42)
 
 # CHECK if there is NaN value in the extracted samples:
 hasNaText = incentivized['reviewText'].isna().any()
 hasNaLabel = incentivized['incentivized_999'].isna().any()
-print(hasNaText)                                                    # False
-print(hasNaLabel)                                                   # False
-print("Shape of the non-incentivized:", notIncentivized.shape)      # (10, 3)
-print("Shape of the incentivized:", incentivized.shape)             # (10, 3)
+print(hasNaText)  # False
+print(hasNaLabel)  # False
+print("Shape of the non-incentivized:", notIncentivized.shape)  # (10, 3)
+print("Shape of the incentivized:", incentivized.shape)  # (10, 3)
 
 # Merge two dataframes and create size = (200 x 3) pd.DataFrame
 newdf = pd.concat([notIncentivized, incentivized])
 newdf = newdf.sample(frac=1, random_state=42).reset_index(drop=True)
 print(newdf.shape)
 
-#newdf = newdf.sample(frac=1, random_state=42).reset_index(drop=True)
-#print(newdf.shape)                                                  # (20, 3)
-
 # Drop newdf['incent_bert_highest_score_sent'] column
 newdf = newdf.drop(['incent_bert_highest_score_sent'], axis=1)
 print(newdf)
 print(newdf.shape)
-
-#print(newdf)
-#print(newdf.shape)                                                  # (20, 2)
 
 # Check for NaN values in the entire DataFrame
 has_nan = newdf.isnull().values.any()
@@ -62,9 +56,7 @@ y = newdf["incentivized_999"]
 # Default = 8:2
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, shuffle=True)
 
-#print(f"X Training Set Distribution: \n {pd.Series(X_train).value_counts()}")
 print(f"Y Training Set Distribution: \n {pd.Series(y_train).value_counts()}")
-#print(f"X Test Set Distribution: \n {pd.Series(X_test).value_counts()}")
 print(f"Y Test Set Distribution: \n {pd.Series(y_test).value_counts()}")
 
 # --------------------------------------------------------------------------------------------------------------------------------
@@ -101,13 +93,6 @@ class ReviewsDataset(Dataset):
             'labels': torch.tensor(label, dtype=torch.long)
         }
 
-class MetricsCallback(TrainerCallback):
-    def __init__(self):
-        self.metrics = []
-    def on_evaluate(self, args, state, control, metrics=None, **kwargs):
-        if metrics:
-            self.metrics.append(metrics)
-
 # --------------------------------------------------------------------------------------------------------------------------------
 
 # Initialize BERT-large model and tokenizer with maxlength = 512
@@ -121,9 +106,6 @@ test_dataset = ReviewsDataset(X_test.tolist(), y_test.tolist(), tokenizer, max_l
 
 # Cross Validation
 kf = KFold(n_splits=5, shuffle=True, random_state=42)
-
-# Storing metrics
-metrics_callback = MetricsCallback()
 
 #optimizer: Default --> AdamW
 training_args = TrainingArguments(
@@ -183,7 +165,6 @@ trainer = Trainer(
     eval_dataset=test_dataset,
     tokenizer=tokenizer,
     compute_metrics=compute_metrics,
-    callbacks=[metrics_callback]
 )
 
 metrics = []
@@ -205,107 +186,56 @@ trainer.train()
 print("Beginning to evaluate the model")
 eval_metrics = trainer.evaluate()
 
-metrics.append(eval_metrics)
-print(metrics)
+# Metrics logs
+logs = trainer.state.log_history
 
-#for epoch, epoch_metrics in enumerate(metrics_callback):
-#    print(f"Epoch {epoch + 1} metrics: {epoch_metrics}")
+epochs = []
+accuracy = []
+precision = []
+recall = []
+f1 = []
+roc_auc = []
 
-"""
-#TODO
-metrics_kfold = []
+for log in logs:
+    if "eval_accuracy" in log:
+        epochs.append(log['epoch'])
+        accuracy.append(log['eval_accuracy'])
+        precision.append(log['eval_precision'])
+        recall.append(log['eval_recall'])
+        f1.append(log['eval_f1'])
+        roc_auc.append(log['eval_roc_auc'])
 
-for fold, (train_idx, val_idx) in enumerate(kf.split(X_train)):
-    print(f"Fold {fold + 1}")
+plt.figure(figsize=(12,8))
 
-    # Create training and validation dataset
-    X_train_fold, X_val_fold = X_train.iloc[train_idx].tolist(), X_train.iloc[val_idx].tolist()
-    y_train_fold, y_val_fold = y_train.iloc[train_idx].tolist(), y_train.iloc[val_idx].tolist()
+plt.subplot(2,3,1)
+plt.plot(epochs, accuracy, label='Accuracy', marker='o')
+plt.xlabel('Epoch')
+plt.ylabel('Accuracy')
+plt.title('Accuracy per Epoch')
 
-    train_dataset_fold = ReviewsDataset(X_train_fold, y_train_fold, tokenizer, max_length)
-    val_dataset_fold = ReviewsDataset(X_val_fold, y_val_fold, tokenizer, max_length)
+plt.subplot(2,3,1)
+plt.plot(epochs, precision, label='Precision', marker='o')
+plt.xlabel('Epoch')
+plt.ylabel('Precision')
+plt.title('Precision per Epoch')
 
-    model = BertForSequenceClassification.from_pretrained('bert-large-cased', num_labels=2)
+plt.subplot(2,3,1)
+plt.plot(epochs, recall, label='Recall', marker='o')
+plt.xlabel('Epoch')
+plt.ylabel('Recall')
+plt.title('Recall per Epoch')
 
-    training_args_fold = TrainingArguments(
-        output_dir=f"../results/bert_fold_{fold}",
-        overwrite_output_dir=True,
-        do_train=True,
-        do_eval=True,
+plt.subplot(2,3,1)
+plt.plot(epochs, accuracy, label='F1 Score', marker='o')
+plt.xlabel('Epoch')
+plt.ylabel('F1 Score')
+plt.title('F1 Score per Epoch')
 
-        # Alter:
-        adam_beta1=0.9,
-        adam_beta2=0.999,
-        learning_rate=1e-7,
-        per_device_train_batch_size=8,
-        per_device_eval_batch_size=8,
+plt.subplot(2,3,1)
+plt.plot(epochs, accuracy, label='ROC_AUC', marker='o')
+plt.xlabel('Epoch')
+plt.ylabel('ROC_AUC')
+plt.title('ROC_AUC per Epoch')
 
-        # Fixed:
-        logging_dir=f'../logs/bert_fold_{fold}',
-        num_train_epochs=4,
-        eval_strategy="epoch",
-        save_strategy="epoch",
-        warmup_steps=500,
-        weight_decay=0.01,
-        logging_steps=5,
-        load_best_model_at_end=True,
-    )
-
-    trainer_fold = Trainer(
-        model=model,
-        args=training_args_fold,
-        train_dataset=train_dataset_fold,
-        eval_dataset=val_dataset_fold,
-        tokenizer=tokenizer,
-        compute_metrics=compute_metrics,
-    )
-
-    trainer_fold.train()
-
-    eval_metrics_fold = trainer_fold.evaluate()
-    print(f"Metrics for fold {fold + 1}: {eval_metrics_fold}")
-    metrics_kfold.append(eval_metrics_fold)
-"""
-
-
-"""
-def plot_metrics(metrics_per_epoch):
-    epochs = list(range(1, len(metrics_per_epoch)))
-    epochs.append('Test')
-
-    accuracy = [metrics['eval_accuracy'] for metrics in metrics_per_epoch]
-    precision = [metrics['eval_precision'] for metrics in metrics_per_epoch]
-    recall = [metrics['eval_recall'] for metrics in metrics_per_epoch]
-    f1 = [metrics['eval_f1'] for metrics in metrics_per_epoch]
-    auc = [metrics['eval_roc_auc'] for metrics in metrics_per_epoch]
-
-    x_axis = ["epoch1", "epoch2", "epoch3", "test"]
-
-    plt.figure(figsize=(20, 10))
-
-    plt.subplot(4, 2, 1)
-    plt.plot(epochs, accuracy)
-
-    plt.title('Accuracy')
-
-    plt.subplot(4, 2, 2)
-    plt.plot(epochs, precision)
-    plt.title('Precision')
-
-    plt.subplot(4, 2, 3)
-    plt.plot(epochs, recall)
-    plt.title('Recall')
-
-    plt.subplot(4, 2, 4)
-    plt.plot(epochs, f1)
-    plt.title('F1 Score')
-
-    plt.subplot(4, 2, 5)
-    plt.plot(epochs, auc)
-    plt.title('AUC')
-
-    plt.tight_layout()
-    plt.show()
-
-plot_metrics(metrics_per_epoch)
-"""
+plt.tight_layout()
+plt.show()

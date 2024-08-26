@@ -1,15 +1,20 @@
 import os
+
+import numpy as np
 import pandas as pd
 from transformers import BertTokenizer, BertForSequenceClassification, Trainer, TrainingArguments
 #from sklearn.model_selection import cross_val_score
 #from sklearn import datasets
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import KFold
-from sklearn.metrics import accuracy_score, roc_auc_score, precision_score, recall_score, f1_score
+from sklearn.metrics import accuracy_score, roc_auc_score, precision_recall_fscore_support, confusion_matrix, \
+    precision_score, recall_score, f1_score
 from torch.utils.data import Dataset
 import torch
 import matplotlib.pyplot as plt
 from sklearn.utils.class_weight import compute_class_weight
+import warnings
+warnings.filterwarnings('ignore')
 
 os.environ['PYTORCH_MPS_HIGH_WATERMARK_RATIO'] = '0.0'
 
@@ -24,8 +29,8 @@ df = df.dropna(subset=["reviewText"])  # Store dropped rows in an another .csv f
 
 # Randomly select 100 incentivized reviews (Labelled with 1)
 #                 100 not incentivized reviews (Labelled with 0)
-notIncentivized = df[df["incentivized_999"] == 0].sample(n=10, random_state=42)
-incentivized = df[df["incentivized_999"] == 1].sample(n=10, random_state=42)
+notIncentivized = df[df["incentivized_999"] == 0].sample(n=100, random_state=42)
+incentivized = df[df["incentivized_999"] == 1].sample(n=100, random_state=42)
 
 # CHECK if there is NaN value in the extracted samples:
 hasNaText = incentivized['reviewText'].isna().any()
@@ -117,9 +122,9 @@ training_args = TrainingArguments(
     # Alter:
     adam_beta1=0.9,
     adam_beta2=0.999,
-    learning_rate=2e-5,
-    per_device_train_batch_size=10,
-    per_device_eval_batch_size=10,
+    learning_rate=5e-5,
+    per_device_train_batch_size=32,
+    per_device_eval_batch_size=16,
 
     # Fixed:
     logging_dir='./logs/bert',
@@ -129,26 +134,51 @@ training_args = TrainingArguments(
     warmup_steps=500,
     weight_decay=0.01,
     logging_steps=5,
+    #class_weights=class_weights,
     load_best_model_at_end=True,
 )
 
-#TODO
-def compute_metrics(eval_pred):
-    predictions, labels = eval_pred
-    #probs = torch.nn.functional.softmax(torch.tensor(predictions), dim=1)
-    pred_labels = torch.argmax(torch.tensor(predictions), axis=1).numpy()
+"""
+Accuracy = (TP + TN) / (TP + TN + FP + FN)
 
-    accuracy = accuracy_score(labels, pred_labels)
-    precision = precision_score(labels, pred_labels)
-    recall = recall_score(labels, pred_labels)
-    f1 = f1_score(labels, pred_labels)
-    roc_auc = roc_auc_score(labels, pred_labels)
+Precision = TP / (TP + FP)
+
+Recall = TP / (TP + FN)
+
+F1 Score = (2 * Precision * Recall) / (Precision + Recall)
+"""
+def compute_metrics(p):
+    #predictions, labels = p
+    labels = p.label_ids
+    preds = p.predictions.argmax(-1)
+    #precision, recall, f1, _ = precision_recall_fscore_support(labels, preds, average="binary")
+
+    #pred_labels = np.argmax(torch.tensor(predictions), axis=-1)
+    #pred_labels = np.argmax(pred_probs, axis=-1)
+
+    print(f"Labels: {labels}")
+    #print(f"Predicted Labels: {pred_labels}")
+    print(f"Predictions: {preds}")
+
+    #accuracy = accuracy_score(labels, pred_labels)
+    accuracy = accuracy_score(labels, preds)
+
+    precision = precision_score(labels, preds, average='weighted')
+    recall = recall_score(labels, preds, average='weighted')
+    f1 = f1_score(labels, preds, average="weighted")
+    roc_auc = roc_auc_score(labels, preds)
+
+    tn, fp, fn, tp = confusion_matrix(labels, preds).ravel()
 
     print(f"Accuracy: {accuracy}, \n"
           f"Precision: {precision}, \n"
           f"Recall: {recall}, \n"
           f"F1 Score: {f1}, \n"
-          f"AUC: {roc_auc} \n")
+          f"AUC: {roc_auc} \n"
+          f"True Positives: {tp} \n"
+          f"False Positives: {fp} \n"
+          f"True Negatives: {tn} \n"
+          f"False Negatives: {fn}")
     return {
         'accuracy': accuracy,
         'precision': precision,
@@ -166,17 +196,6 @@ trainer = Trainer(
     tokenizer=tokenizer,
     compute_metrics=compute_metrics,
 )
-
-metrics = []
-
-metrics_dict = {
-    "loss": [],
-    "accuracy": [],
-    "precision": [],
-    "recall": [],
-    "f1": [],
-    "roc_auc": []
-}
 
 # Train
 print("Beginning to train the model")
@@ -213,26 +232,26 @@ plt.xlabel('Epoch')
 plt.ylabel('Accuracy')
 plt.title('Accuracy per Epoch')
 
-plt.subplot(2,3,1)
+plt.subplot(2,3,2)
 plt.plot(epochs, precision, label='Precision', marker='o')
 plt.xlabel('Epoch')
 plt.ylabel('Precision')
 plt.title('Precision per Epoch')
 
-plt.subplot(2,3,1)
+plt.subplot(2,3,3)
 plt.plot(epochs, recall, label='Recall', marker='o')
 plt.xlabel('Epoch')
 plt.ylabel('Recall')
 plt.title('Recall per Epoch')
 
-plt.subplot(2,3,1)
-plt.plot(epochs, accuracy, label='F1 Score', marker='o')
+plt.subplot(2,3,4)
+plt.plot(epochs, f1, label='F1 Score', marker='o')
 plt.xlabel('Epoch')
 plt.ylabel('F1 Score')
 plt.title('F1 Score per Epoch')
 
-plt.subplot(2,3,1)
-plt.plot(epochs, accuracy, label='ROC_AUC', marker='o')
+plt.subplot(2,3,5)
+plt.plot(epochs, roc_auc, label='ROC_AUC', marker='o')
 plt.xlabel('Epoch')
 plt.ylabel('ROC_AUC')
 plt.title('ROC_AUC per Epoch')

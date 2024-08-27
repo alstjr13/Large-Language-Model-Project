@@ -1,6 +1,7 @@
 import pandas as pd
 import re
 
+#filePath = '../../data/sample_6k_reviews_for_RA_updated.csv'
 filePath = '../../data/sample_6k_reviews_for_RA_updated.csv'
 df = pd.read_csv(filePath)
 
@@ -17,6 +18,7 @@ incentivized_label = df['incentivized_999']
 if __name__ == "__main__":
     # Apply the function removeIncent to all rows of the sample .csv file
     df['reviewText'] = df.apply(removeIncent, axis=1)
+    print(df["incentivized_999"].value_counts())
 
     # Create an another .csv file (cleaned) to feed into the LLM
     df.to_csv('../data/updated_review_sample_for_RA.csv', index=False)

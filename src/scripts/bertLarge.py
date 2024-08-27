@@ -18,10 +18,11 @@ warnings.filterwarnings('ignore')
 
 os.environ['PYTORCH_MPS_HIGH_WATERMARK_RATIO'] = '0.0'
 
+
 #TODO
 
 # Load sample data set with incentivized reviews as pd.DataFrame
-filePath = '../data/updated_review_sample_for_RA.csv'
+filePath = '../../data/updated_review_sample_for_RA.csv'
 df = pd.read_csv(filePath)
 
 # Delete any row that has NaN value (i.e. Clean)
@@ -29,8 +30,8 @@ df = df.dropna(subset=["reviewText"])  # Store dropped rows in an another .csv f
 
 # Randomly select 100 incentivized reviews (Labelled with 1)
 #                 100 not incentivized reviews (Labelled with 0)
-notIncentivized = df[df["incentivized_999"] == 0].sample(n=100, random_state=42)
-incentivized = df[df["incentivized_999"] == 1].sample(n=100, random_state=42)
+notIncentivized = df[df["incentivized_999"] == 0].sample(n=200, random_state=42)
+incentivized = df[df["incentivized_999"] == 1].sample(n=200, random_state=42)
 
 # CHECK if there is NaN value in the extracted samples:
 hasNaText = incentivized['reviewText'].isna().any()
@@ -122,7 +123,7 @@ training_args = TrainingArguments(
     # Alter:
     adam_beta1=0.9,
     adam_beta2=0.999,
-    learning_rate=5e-5,
+    learning_rate=1e-4,
     per_device_train_batch_size=32,
     per_device_eval_batch_size=16,
 
@@ -134,7 +135,6 @@ training_args = TrainingArguments(
     warmup_steps=500,
     weight_decay=0.01,
     logging_steps=5,
-    #class_weights=class_weights,
     load_best_model_at_end=True,
 )
 

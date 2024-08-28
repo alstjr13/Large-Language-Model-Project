@@ -3,11 +3,10 @@ import os
 import numpy as np
 import pandas as pd
 from transformers import BertTokenizer, BertForSequenceClassification, Trainer, TrainingArguments
-#from sklearn.model_selection import cross_val_score
-#from sklearn import datasets
+from sklearn.model_selection import cross_val_score, KFold
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import KFold
-from sklearn.metrics import accuracy_score, roc_auc_score, precision_recall_fscore_support, confusion_matrix, \
+from sklearn.metrics import accuracy_score, roc_auc_score, confusion_matrix, \
     precision_score, recall_score, f1_score
 from torch.utils.data import Dataset
 import torch
@@ -18,9 +17,6 @@ warnings.filterwarnings('ignore')
 
 os.environ['PYTORCH_MPS_HIGH_WATERMARK_RATIO'] = '0.0'
 
-
-#TODO
-
 # Load sample data set with incentivized reviews as pd.DataFrame
 filePath = '../../data/updated_review_sample_for_RA.csv'
 df = pd.read_csv(filePath)
@@ -30,8 +26,8 @@ df = df.dropna(subset=["reviewText"])  # Store dropped rows in an another .csv f
 
 # Randomly select 100 incentivized reviews (Labelled with 1)
 #                 100 not incentivized reviews (Labelled with 0)
-notIncentivized = df[df["incentivized_999"] == 0].sample(n=200, random_state=42)
-incentivized = df[df["incentivized_999"] == 1].sample(n=200, random_state=42)
+notIncentivized = df[df["incentivized_999"] == 0].sample(n=10, random_state=42)
+incentivized = df[df["incentivized_999"] == 1].sample(n=10, random_state=42)
 
 # CHECK if there is NaN value in the extracted samples:
 hasNaText = incentivized['reviewText'].isna().any()
@@ -109,9 +105,6 @@ max_length = 512
 # Datasets to feed into BERT-Large: ReviewDataset(Dataset)
 train_dataset = ReviewsDataset(X_train.tolist(), y_train.tolist(), tokenizer, max_length)
 test_dataset = ReviewsDataset(X_test.tolist(), y_test.tolist(), tokenizer, max_length)
-
-# Cross Validation
-kf = KFold(n_splits=5, shuffle=True, random_state=42)
 
 #optimizer: Default --> AdamW
 training_args = TrainingArguments(
@@ -201,9 +194,58 @@ trainer = Trainer(
 print("Beginning to train the model")
 trainer.train()
 
-# Evaluate
+# Cross validation
+kf = KFold(n_splits=5, shuffle=True, random_state=42)
+
+fold_accuracies = []
+fold_precision = []
+fold_recall = []
+fold_f1 = []
+fold_roc_auc = []
+
+for fold, (train_index, val_index) in enumerate(kf.split(X_train)):
+
+    X_train_fold, X_val_fold = X_train.iloc[train_index], X_train.iloc[val_index]
+    y_train_fold, y_val_fold = y_train.iloc[train_index], y_train.iloc[val_index]
+
+    train_dataset = ReviewsDataset(X_train_fold.tolist(), y_train_fold.tolist(), tokenizer, max_length)
+    val_dataset = ReviewsDataset(X_val_fold.tolist(), y_val_fold.tolist(), tokenizer, max_length)
+
+    model = BertForSequenceClassification.from_pretrained('bert-large-cased', num_labels=2)
+
+    trainer = Trainer(
+        model=model,
+        args=training_args,
+        train_dataset=train_dataset,
+        eval_dataset=val_dataset,
+        tokenizer=tokenizer,
+        compute_metrics=compute_metrics,
+    )
+
+    print(f"Cross validation, TRAIN, Fold {fold + 1} / 5")
+    trainer.train()
+
+    # Cross validation history
+    logs_fold = trainer.state.log_history
+    fold_accuracies.append(logs_fold["eval_accuracy"])
+
+    print(f"Cross validation, Test")
+    eval_metrics_fold = trainer.evaluate()
+
+    fold_accuracies.append(eval_metrics_fold.get("eval_accuracy", None))
+
+# Evaluate (Test)
 print("Beginning to evaluate the model")
 eval_metrics = trainer.evaluate()
+
+
+
+# Metrics from the testing stage
+eval_accuracy = eval_metrics.get("eval_accuracy", None)
+eval_precision = eval_metrics.get("eval_precision", None)
+eval_recall = eval_metrics.get("eval_recall", None)
+eval_f1 = eval_metrics.get("eval_f1", None)
+eval_roc_auc = eval_metrics.get("eval_roc_auc", None)
 
 # Metrics logs
 logs = trainer.state.log_history
@@ -224,10 +266,19 @@ for log in logs:
         f1.append(log['eval_f1'])
         roc_auc.append(log['eval_roc_auc'])
 
+epochs.append("Test")
+accuracy.append(eval_accuracy)
+precision.append(eval_precision)
+recall.append(eval_recall)
+f1.append(eval_f1)
+roc_auc.append(eval_roc_auc)
+
 plt.figure(figsize=(12,8))
 
 plt.subplot(2,3,1)
 plt.plot(epochs, accuracy, label='Accuracy', marker='o')
+plt.plot(epochs, fold_accuracies, label="Cross Validation Accuracy")
+plt.plot(epochs, )
 plt.xlabel('Epoch')
 plt.ylabel('Accuracy')
 plt.title('Accuracy per Epoch')

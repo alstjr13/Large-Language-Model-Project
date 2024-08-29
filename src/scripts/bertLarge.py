@@ -26,8 +26,8 @@ df = df.dropna(subset=["reviewText"])  # Store dropped rows in an another .csv f
 
 # Randomly select 100 incentivized reviews (Labelled with 1)
 #                 100 not incentivized reviews (Labelled with 0)
-notIncentivized = df[df["incentivized_999"] == 0].sample(n=10, random_state=42)
-incentivized = df[df["incentivized_999"] == 1].sample(n=10, random_state=42)
+notIncentivized = df[df["incentivized_999"] == 0].sample(n=200, random_state=42)
+incentivized = df[df["incentivized_999"] == 1].sample(n=200, random_state=42)
 
 # CHECK if there is NaN value in the extracted samples:
 hasNaText = incentivized['reviewText'].isna().any()
@@ -118,7 +118,7 @@ training_args = TrainingArguments(
     adam_beta2=0.999,
     learning_rate=1e-4,
     per_device_train_batch_size=32,
-    per_device_eval_batch_size=16,
+    per_device_eval_batch_size=32,
 
     # Fixed:
     logging_dir='./logs/bert',
@@ -196,13 +196,11 @@ trainer.train()
 
 # Cross validation
 kf = KFold(n_splits=5, shuffle=True, random_state=42)
-
+fold_epochs = []
 fold_accuracies = []
-fold_precision = []
-fold_recall = []
-fold_f1 = []
-fold_roc_auc = []
+result_kf_accuracies = []
 
+# Epoch 당 cross validation 5번씩:
 for fold, (train_index, val_index) in enumerate(kf.split(X_train)):
 
     X_train_fold, X_val_fold = X_train.iloc[train_index], X_train.iloc[val_index]
@@ -227,12 +225,20 @@ for fold, (train_index, val_index) in enumerate(kf.split(X_train)):
 
     # Cross validation history
     logs_fold = trainer.state.log_history
-    fold_accuracies.append(logs_fold["eval_accuracy"])
 
-    print(f"Cross validation, Test")
-    eval_metrics_fold = trainer.evaluate()
+    for log_fold in logs_fold:
+        if "eval_accuracy" in log_fold:
+            fold_epochs.append(log_fold['epoch'])
+            fold_accuracies.append(log_fold["eval_accuracy"])
 
-    fold_accuracies.append(eval_metrics_fold.get("eval_accuracy", None))
+    #print(f"Cross validation, Test")
+    #eval_metrics_fold = trainer.evaluate()
+
+    #fold_accuracies.append(eval_metrics_fold.get("eval_accuracy", None))
+    print(fold_accuracies)
+
+    result_kf_accuracies.append(np.mean(fold_accuracies))
+    print(result_kf_accuracies)
 
 # Evaluate (Test)
 print("Beginning to evaluate the model")
@@ -277,7 +283,7 @@ plt.figure(figsize=(12,8))
 
 plt.subplot(2,3,1)
 plt.plot(epochs, accuracy, label='Accuracy', marker='o')
-plt.plot(epochs, fold_accuracies, label="Cross Validation Accuracy")
+plt.plot(epochs, list(result_kf_accuracies,0,0), label="Cross Validation Accuracy")
 plt.plot(epochs, )
 plt.xlabel('Epoch')
 plt.ylabel('Accuracy')

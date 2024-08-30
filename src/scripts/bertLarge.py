@@ -26,8 +26,8 @@ df = df.dropna(subset=["reviewText"])  # Store dropped rows in an another .csv f
 
 # Randomly select 100 incentivized reviews (Labelled with 1)
 #                 100 not incentivized reviews (Labelled with 0)
-notIncentivized = df[df["incentivized_999"] == 0].sample(n=200, random_state=42)
-incentivized = df[df["incentivized_999"] == 1].sample(n=200, random_state=42)
+notIncentivized = df[df["incentivized_999"] == 0].sample(n=300, random_state=42)
+incentivized = df[df["incentivized_999"] == 1].sample(n=300, random_state=42)
 
 # CHECK if there is NaN value in the extracted samples:
 hasNaText = incentivized['reviewText'].isna().any()
@@ -64,10 +64,10 @@ print(f"Y Test Set Distribution: \n {pd.Series(y_test).value_counts()}")
 # --------------------------------------------------------------------------------------------------------------------------------
 
 # Create a ReviewDataset with inputs:
-# 1. texts:  reviews of the users (either incentivized or unincentivized - labelled with 0 or 1)
-# 2. labels: corresponding label value --> 0 or 1
-# 3. tokenizer: BERT-Large Tokenizer
-# 4. max_length: set default to 512
+# texts:  reviews of the users (either incentivized or unincentivized - labelled with 0 or 1)
+# labels: corresponding label value --> 0 or 1
+# tokenizer: BERT-Large Tokenizer
+# max_length: set default to 512
 class ReviewsDataset(Dataset):
     def __init__(self, texts, labels, tokenizer, max_length=512):
         self.texts = texts
@@ -122,6 +122,8 @@ training_args = TrainingArguments(
 
     # Fixed:
     logging_dir='./logs/bert',
+    # num_train_epochs = 4 ~ 5
+    # BERT 논문 권장: 2 ~ 4
     num_train_epochs=4,
     eval_strategy="epoch",
     save_strategy="epoch",
@@ -200,6 +202,24 @@ fold_epochs = []
 fold_accuracies = []
 result_kf_accuracies = []
 
+# TODO:
+# (우선순위) 1. 파일 두개 --> bertWithCrossValidation.py , bertWithoutCrossValidation.py
+# (우선순위) 2. bertWithoutCrossValidation.py 런 해서 결과값 스크린샷 첨부 (8월31일 오후까지)
+# (우선순위) 3. cuda 사용가능 하게끔 ~~~
+
+# 3. + MSELoss Plot, object oriented & function
+# 4. bigbird, longformer, bert ~~ bert 를 테스트 삼아 했고, learning_rate, training_batch, training_eval 테스트 ~~~ , ~~~ 한 training argument 를 썼을때, 가장 베스트한 값이 나왔다~~~
+# 5. Final Code:
+#    a. Comment 깔끔하게
+#    b. Code 깔끔하게
+#    c. 알잘딱
+#    d. github README.md
+# ppt, 결과값 (테스트 포함) Plot 스크린샷
+# hyperparameter, learning_rate, training_bath, training_eval, ~~~~,
+
+# Power BI:
+# Comparison 은 테이블
+"""
 # Epoch 당 cross validation 5번씩:
 for fold, (train_index, val_index) in enumerate(kf.split(X_train)):
 
@@ -239,11 +259,11 @@ for fold, (train_index, val_index) in enumerate(kf.split(X_train)):
 
     result_kf_accuracies.append(np.mean(fold_accuracies))
     print(result_kf_accuracies)
+"""
 
 # Evaluate (Test)
 print("Beginning to evaluate the model")
 eval_metrics = trainer.evaluate()
-
 
 
 # Metrics from the testing stage
@@ -279,12 +299,18 @@ recall.append(eval_recall)
 f1.append(eval_f1)
 roc_auc.append(eval_roc_auc)
 
+print(epochs)
+print(accuracy)
+print(precision)
+print(recall)
+print(f1)
+print(roc_auc)
+
 plt.figure(figsize=(12,8))
 
 plt.subplot(2,3,1)
 plt.plot(epochs, accuracy, label='Accuracy', marker='o')
-plt.plot(epochs, list(result_kf_accuracies,0,0), label="Cross Validation Accuracy")
-plt.plot(epochs, )
+#plt.plot(epochs, list(result_kf_accuracies,0,0), label="Cross Validation Accuracy")
 plt.xlabel('Epoch')
 plt.ylabel('Accuracy')
 plt.title('Accuracy per Epoch')

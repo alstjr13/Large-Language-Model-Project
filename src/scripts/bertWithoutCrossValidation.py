@@ -23,8 +23,8 @@ df = pd.read_csv(filePath)
 df = df.dropna(subset=["reviewText"])
 
 # Take random samples from the dataset (.csv file)
-notIncentivized = df[df['incentivized_999'] == 0].sample(n=10, random_state=42)
-incentivized = df[df['incentivized_999'] == 1].sample(n=10, random_state=42)
+notIncentivized = df[df['incentivized_999'] == 0].sample(n=300, random_state=42)
+incentivized = df[df['incentivized_999'] == 1].sample(n=300, random_state=42)
 
 # Check if there exist NaN value in the extracted samples:
 hasNaText = incentivized['reviewText'].isna().any()
@@ -205,6 +205,7 @@ precision = []
 recall = []
 f1 = []
 roc_auc = []
+loss = []
 
 for log in logs:
     if "eval_accuracy" in log:
@@ -214,6 +215,7 @@ for log in logs:
         recall.append(log['eval_recall'])
         f1.append(log['eval_f1'])
         roc_auc.append(log['eval_roc_auc'])
+        #loss.append(log['eval_loss'])
 
 epochs.append("Test")
 accuracy.append(eval_accuracy)
@@ -233,7 +235,6 @@ plt.figure(figsize=(12,8))
 
 plt.subplot(2,3,1)
 plt.plot(epochs, accuracy, label='Accuracy', marker='o')
-#plt.plot(epochs, list(result_kf_accuracies,0,0), label="Cross Validation Accuracy")
 plt.xlabel('Epoch')
 plt.ylabel('Accuracy')
 plt.title('Accuracy per Epoch')

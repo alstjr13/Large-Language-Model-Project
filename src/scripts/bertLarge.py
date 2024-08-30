@@ -11,7 +11,7 @@ from sklearn.metrics import accuracy_score, roc_auc_score, confusion_matrix, \
 from torch.utils.data import Dataset
 import torch
 import matplotlib.pyplot as plt
-from sklearn.utils.class_weight import compute_class_weight
+#from sklearn.utils.class_weight import compute_class_weight
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -26,8 +26,8 @@ df = df.dropna(subset=["reviewText"])  # Store dropped rows in an another .csv f
 
 # Randomly select 100 incentivized reviews (Labelled with 1)
 #                 100 not incentivized reviews (Labelled with 0)
-notIncentivized = df[df["incentivized_999"] == 0].sample(n=300, random_state=42)
-incentivized = df[df["incentivized_999"] == 1].sample(n=300, random_state=42)
+notIncentivized = df[df["incentivized_999"] == 0].sample(n=10, random_state=42)
+incentivized = df[df["incentivized_999"] == 1].sample(n=10, random_state=42)
 
 # CHECK if there is NaN value in the extracted samples:
 hasNaText = incentivized['reviewText'].isna().any()

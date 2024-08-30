@@ -116,7 +116,7 @@ training_args = TrainingArguments(
     # Alter:
     adam_beta1=0.9,
     adam_beta2=0.999,
-    learning_rate=1e-4,
+    learning_rate=3e-4,
     per_device_train_batch_size=32,
     per_device_eval_batch_size=32,
 
@@ -197,10 +197,10 @@ print("Beginning to train the model")
 trainer.train()
 
 # Cross validation
-kf = KFold(n_splits=5, shuffle=True, random_state=42)
-fold_epochs = []
-fold_accuracies = []
-result_kf_accuracies = []
+#kf = KFold(n_splits=5, shuffle=True, random_state=42)
+#fold_epochs = []
+#fold_accuracies = []
+#result_kf_accuracies = []
 
 # TODO:
 # (우선순위) 1. 파일 두개 --> bertWithCrossValidation.py , bertWithoutCrossValidation.py
@@ -217,7 +217,6 @@ result_kf_accuracies = []
 # ppt, 결과값 (테스트 포함) Plot 스크린샷
 # hyperparameter, learning_rate, training_bath, training_eval, ~~~~,
 
-# Power BI:
 # Comparison 은 테이블
 """
 # Epoch 당 cross validation 5번씩:
@@ -264,7 +263,6 @@ for fold, (train_index, val_index) in enumerate(kf.split(X_train)):
 # Evaluate (Test)
 print("Beginning to evaluate the model")
 eval_metrics = trainer.evaluate()
-
 
 # Metrics from the testing stage
 eval_accuracy = eval_metrics.get("eval_accuracy", None)

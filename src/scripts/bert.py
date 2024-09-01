@@ -1,5 +1,4 @@
 import os
-
 import numpy as np
 import pandas as pd
 from transformers import BertTokenizer, BertForSequenceClassification, Trainer, TrainingArguments
@@ -14,7 +13,6 @@ import matplotlib.pyplot as plt
 from sklearn.utils.class_weight import compute_class_weight
 import warnings
 warnings.filterwarnings('ignore')
-
 os.environ['PYTORCH_MPS_HIGH_WATERMARK_RATIO'] = '0.0'
 
 # Load sample data set with incentivized reviews as pd.DataFrame
@@ -26,8 +24,8 @@ df = df.dropna(subset=["reviewText"])  # Store dropped rows in an another .csv f
 
 # Randomly select 100 incentivized reviews (Labelled with 1)
 #                 100 not incentivized reviews (Labelled with 0)
-notIncentivized = df[df["incentivized_999"] == 0].sample(n=300, random_state=42)
-incentivized = df[df["incentivized_999"] == 1].sample(n=300, random_state=42)
+notIncentivized = df[df["incentivized_999"] == 0].sample(n=10, random_state=42)
+incentivized = df[df["incentivized_999"] == 1].sample(n=10, random_state=42)
 
 # CHECK if there is NaN value in the extracted samples:
 hasNaText = incentivized['reviewText'].isna().any()
@@ -143,19 +141,12 @@ Recall = TP / (TP + FN)
 F1 Score = (2 * Precision * Recall) / (Precision + Recall)
 """
 def compute_metrics(p):
-    #predictions, labels = p
     labels = p.label_ids
     preds = p.predictions.argmax(-1)
-    #precision, recall, f1, _ = precision_recall_fscore_support(labels, preds, average="binary")
 
-    #pred_labels = np.argmax(torch.tensor(predictions), axis=-1)
-    #pred_labels = np.argmax(pred_probs, axis=-1)
+    print(f"Labels: {labels} \n")
+    print(f"Predictions: {preds} \n")
 
-    print(f"Labels: {labels}")
-    #print(f"Predicted Labels: {pred_labels}")
-    print(f"Predictions: {preds}")
-
-    #accuracy = accuracy_score(labels, pred_labels)
     accuracy = accuracy_score(labels, preds)
 
     precision = precision_score(labels, preds, average='weighted')
@@ -173,7 +164,7 @@ def compute_metrics(p):
           f"True Positives: {tp} \n"
           f"False Positives: {fp} \n"
           f"True Negatives: {tn} \n"
-          f"False Negatives: {fn}")
+          f"False Negatives: {fn} \n")
     return {
         'accuracy': accuracy,
         'precision': precision,
@@ -201,51 +192,6 @@ kf = KFold(n_splits=5, shuffle=True, random_state=42)
 fold_epochs = []
 fold_accuracies = []
 result_kf_accuracies = []
-
-
-"""
-# Epoch 당 cross validation 5번씩:
-for fold, (train_index, val_index) in enumerate(kf.split(X_train)):
-
-    X_train_fold, X_val_fold = X_train.iloc[train_index], X_train.iloc[val_index]
-    y_train_fold, y_val_fold = y_train.iloc[train_index], y_train.iloc[val_index]
-
-    train_dataset = ReviewsDataset(X_train_fold.tolist(), y_train_fold.tolist(), tokenizer, max_length)
-    val_dataset = ReviewsDataset(X_val_fold.tolist(), y_val_fold.tolist(), tokenizer, max_length)
-
-    model = BertForSequenceClassification.from_pretrained('bert-large-cased', num_labels=2)
-
-    trainer = Trainer(
-        model=model,
-        args=training_args,
-        train_dataset=train_dataset,
-        eval_dataset=val_dataset,
-        tokenizer=tokenizer,
-        compute_metrics=compute_metrics,
-    )
-
-    print(f"Cross validation, TRAIN, Fold {fold + 1} / 5")
-    trainer.train()
-
-    # Cross validation history
-    logs_fold = trainer.state.log_history
-
-    for log_fold in logs_fold:
-        if "eval_accuracy" in log_fold:
-            fold_epochs.append(log_fold['epoch'])
-            fold_accuracies.append(log_fold["eval_accuracy"])
-
-    #print(f"Cross validation, Test")
-    #eval_metrics_fold = trainer.evaluate()
-
-    #fold_accuracies.append(eval_metrics_fold.get("eval_accuracy", None))
-    print(fold_accuracies)
-
-    result_kf_accuracies.append(np.mean(fold_accuracies))
-    print(result_kf_accuracies)
-
-"""
-
 
 # Evaluate (Test)
 print("Beginning to evaluate the model")

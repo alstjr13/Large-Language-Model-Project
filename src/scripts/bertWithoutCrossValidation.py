@@ -23,8 +23,8 @@ df = pd.read_csv(filePath)
 df = df.dropna(subset=["reviewText"])
 
 # Take random samples from the dataset (.csv file)
-notIncentivized = df[df['incentivized_999'] == 0].sample(n=300, random_state=42)
-incentivized = df[df['incentivized_999'] == 1].sample(n=300, random_state=42)
+notIncentivized = df[df['incentivized_999'] == 0].sample(n=10, random_state=42)
+incentivized = df[df['incentivized_999'] == 1].sample(n=10, random_state=42)
 
 # Check if there exist NaN value in the extracted samples:
 hasNaText = incentivized['reviewText'].isna().any()
@@ -105,20 +105,20 @@ test_dataset = ReviewsDataset(X_test.tolist(), y_test.tolist(), tokenizer, max_l
 
 #optimizer: Default --> AdamW
 training_args = TrainingArguments(
-    output_dir='./results/bert',
+    output_dir='./results/bertWithoutCrossValidation',
     overwrite_output_dir= True,
     do_train= True,
     do_eval= True,
 
     # Alter:
-    adam_beta1=0.9,
-    adam_beta2=0.999,
-    learning_rate=3e-4,
+    #adam_beta1=0.9,
+    #adam_beta2=0.999,
+    learning_rate=3e-5,
     per_device_train_batch_size=32,
-    per_device_eval_batch_size=32,
+    per_device_eval_batch_size=16,
 
     # Fixed:
-    logging_dir='./logs/bert',
+    logging_dir='./logs/bertWithoutCrossValidation',
     # num_train_epochs = 4 ~ 5
     # BERT 논문 권장: 2 ~ 4
     num_train_epochs=4,
@@ -206,30 +206,12 @@ recall = []
 f1 = []
 roc_auc = []
 loss = []
-"""
-for log in logs:
-    if "eval_accuracy" in log:
-        epochs.append(log['epoch'])
-        accuracy.append(log['eval_accuracy'])
-        precision.append(log['eval_precision'])
-        recall.append(log['eval_recall'])
-        f1.append(log['eval_f1'])
-        roc_auc.append(log['eval_roc_auc'])
-        #loss.append(log['eval_loss'])
 
-epochs.append("Test")
-accuracy.append(eval_accuracy)
-precision.append(eval_precision)
-recall.append(eval_recall)
-f1.append(eval_f1)
-roc_auc.append(eval_roc_auc)
-"""
-
+# Epoch 1,2,3,4
 for log in logs:
     if "eval_accuracy" in log:
         epoch_value = log['epoch']
         if epochs and epoch_value == epochs[-1]:
-            # Skip the duplicate epoch entry if it already exists
             continue
         epochs.append(epoch_value)
         accuracy.append(log['eval_accuracy'])
@@ -238,15 +220,6 @@ for log in logs:
         f1.append(log['eval_f1'])
         roc_auc.append(log['eval_roc_auc'])
 
-# Append the test metrics separately if they are different from the final epoch evaluation
-if "Test" not in epochs:
-    epochs.append("Test")
-    accuracy.append(eval_accuracy)
-    precision.append(eval_precision)
-    recall.append(eval_recall)
-    f1.append(eval_f1)
-    roc_auc.append(eval_roc_auc)
-
 print(epochs)
 print(accuracy)
 print(precision)
@@ -254,6 +227,19 @@ print(recall)
 print(f1)
 print(roc_auc)
 
+print("Evaluation Metrics:")
+print(f"Evaluation Accuracy: {eval_accuracy}")
+print(f"Evaluation Precision: {eval_precision}")
+print(f"Evaluation Recall: {eval_recall}")
+print(f"Evaluation F1: {eval_f1}")
+print(f"Evaluation ROC_AUC: {eval_roc_auc}")
+
+
+def plot_metrics(loa, lop, lor, lof, lora):
+    plt.figure(figsize=(12,15))
+    pass
+
+# Plotting
 plt.figure(figsize=(12,8))
 
 plt.subplot(2,3,1)

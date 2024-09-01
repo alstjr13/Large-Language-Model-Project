@@ -26,8 +26,8 @@ df = df.dropna(subset=["reviewText"])  # Store dropped rows in an another .csv f
 
 # Randomly select 100 incentivized reviews (Labelled with 1)
 #                 100 not incentivized reviews (Labelled with 0)
-notIncentivized = df[df["incentivized_999"] == 0].sample(n=200, random_state=42)
-incentivized = df[df["incentivized_999"] == 1].sample(n=200, random_state=42)
+notIncentivized = df[df["incentivized_999"] == 0].sample(n=300, random_state=42)
+incentivized = df[df["incentivized_999"] == 1].sample(n=300, random_state=42)
 
 # CHECK if there is NaN value in the extracted samples:
 hasNaText = incentivized['reviewText'].isna().any()
@@ -251,8 +251,6 @@ for fold, (train_index, val_index) in enumerate(kf.split(X_train)):
 print("Beginning to evaluate the model")
 eval_metrics = trainer.evaluate()
 
-
-
 # Metrics from the testing stage
 eval_accuracy = eval_metrics.get("eval_accuracy", None)
 eval_precision = eval_metrics.get("eval_precision", None)
@@ -272,6 +270,29 @@ roc_auc = []
 
 for log in logs:
     if "eval_accuracy" in log:
+        epoch_value = log['epoch']
+        if epochs and epoch_value == epochs[-1]:
+            # Skip the duplicate epoch entry if it already exists
+            continue
+        epochs.append(epoch_value)
+        accuracy.append(log['eval_accuracy'])
+        precision.append(log['eval_precision'])
+        recall.append(log['eval_recall'])
+        f1.append(log['eval_f1'])
+        roc_auc.append(log['eval_roc_auc'])
+
+# Append the test metrics separately if they are different from the final epoch evaluation
+if "Test" not in epochs:
+    epochs.append("Test")
+    accuracy.append(eval_accuracy)
+    precision.append(eval_precision)
+    recall.append(eval_recall)
+    f1.append(eval_f1)
+    roc_auc.append(eval_roc_auc)
+
+"""
+for log in logs:
+    if "eval_accuracy" in log:
         epochs.append(log['epoch'])
         accuracy.append(log['eval_accuracy'])
         precision.append(log['eval_precision'])
@@ -286,12 +307,13 @@ recall.append(eval_recall)
 f1.append(eval_f1)
 roc_auc.append(eval_roc_auc)
 
+"""
+
+
 plt.figure(figsize=(12,8))
 
 plt.subplot(2,3,1)
 plt.plot(epochs, accuracy, label='Accuracy', marker='o')
-plt.plot(epochs, list(result_kf_accuracies,0,0), label="Cross Validation Accuracy")
-plt.plot(epochs, )
 plt.xlabel('Epoch')
 plt.ylabel('Accuracy')
 plt.title('Accuracy per Epoch')

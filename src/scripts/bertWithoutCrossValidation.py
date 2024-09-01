@@ -206,7 +206,7 @@ recall = []
 f1 = []
 roc_auc = []
 loss = []
-
+"""
 for log in logs:
     if "eval_accuracy" in log:
         epochs.append(log['epoch'])
@@ -223,6 +223,29 @@ precision.append(eval_precision)
 recall.append(eval_recall)
 f1.append(eval_f1)
 roc_auc.append(eval_roc_auc)
+"""
+
+for log in logs:
+    if "eval_accuracy" in log:
+        epoch_value = log['epoch']
+        if epochs and epoch_value == epochs[-1]:
+            # Skip the duplicate epoch entry if it already exists
+            continue
+        epochs.append(epoch_value)
+        accuracy.append(log['eval_accuracy'])
+        precision.append(log['eval_precision'])
+        recall.append(log['eval_recall'])
+        f1.append(log['eval_f1'])
+        roc_auc.append(log['eval_roc_auc'])
+
+# Append the test metrics separately if they are different from the final epoch evaluation
+if "Test" not in epochs:
+    epochs.append("Test")
+    accuracy.append(eval_accuracy)
+    precision.append(eval_precision)
+    recall.append(eval_recall)
+    f1.append(eval_f1)
+    roc_auc.append(eval_roc_auc)
 
 print(epochs)
 print(accuracy)

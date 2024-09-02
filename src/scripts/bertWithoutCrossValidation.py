@@ -1,6 +1,5 @@
 import os
 import warnings
-
 import numpy as np
 import pandas as pd
 from transformers import BertTokenizer, BertForSequenceClassification, Trainer, TrainingArguments
@@ -108,15 +107,15 @@ test_dataset = ReviewsDataset(X_test.tolist(), y_test.tolist(), tokenizer, max_l
 #optimizer: Default --> AdamW
 training_args = TrainingArguments(
     output_dir='./results/bertWithoutCrossValidation',
-    overwrite_output_dir= True,
+    overwrite_output_dir= True,                             # Refresh Training every single run
     do_train= True,
     do_eval= True,
 
     # Alter:
-    learning_rate=3e-5,
-    per_device_train_batch_size=32,
-    per_device_eval_batch_size=16,
-
+    learning_rate=3e-5,                                     # α                          : Step-length
+    per_device_train_batch_size=32,                         # batch size (on training)   :
+    per_device_eval_batch_size=16,                          # batch size (on evaluation) :
+    # NOTE: BERT uses mini-batch gradient descent
     # Fixed:
     logging_dir='./logs/bertWithoutCrossValidation',
     # num_train_epochs = 4 ~ 5
@@ -151,6 +150,7 @@ def compute_metrics(p):
     recall = recall_score(labels, preds, average='weighted')
     f1 = f1_score(labels, preds, average="weighted")
     roc_auc = roc_auc_score(labels, preds)
+
 
     tn, fp, fn, tp = confusion_matrix(labels, preds).ravel()
 
@@ -221,6 +221,7 @@ for log in logs:
         roc_auc.append(log['eval_roc_auc'])
         loss.append(log['eval_loss'])
 
+print("Epochs Metrics:")
 print(epochs)
 print(accuracy)
 print(precision)
@@ -236,13 +237,20 @@ print(f"Evaluation Recall: {eval_recall}")
 print(f"Evaluation F1: {eval_f1}")
 print(f"Evaluation ROC_AUC: {eval_roc_auc}")
 
+epochs.append("Test")
+accuracy.append(eval_accuracy)
+precision.append(eval_precision)
+recall.append(eval_recall)
+f1.append(eval_f1)
+roc_auc.append(eval_roc_auc)
 
+"""
 # Predictions
 predictions = trainer.predict(test_dataset)
 
 # Load trained-model
 model_path = "./results/bertWithoutCrossValidation/checkpoint-4"
-model_trained = BertForSequenceClassification(model_path, num_labels=2)
+model_trained = BertForSequenceClassification.from_pretrained(model_path)
 
 # Define test trainer
 test_trainer = Trainer(model_trained)
@@ -250,7 +258,9 @@ test_trainer = Trainer(model_trained)
 raw_pred, _,_ = test_trainer.predict(test_dataset)
 
 y_pred = np.argmax(raw_pred, axis=1)
+print("Prediction DEBUG")
 print(y_pred)
+"""
 
 def plot_metrics(loa, lop, lor, lof, lora):
     plt.figure(figsize=(12,15))

@@ -1,5 +1,7 @@
 import os
 import warnings
+
+import numpy as np
 import pandas as pd
 from transformers import BertTokenizer, BertForSequenceClassification, Trainer, TrainingArguments
 from sklearn.model_selection import train_test_split
@@ -217,6 +219,7 @@ for log in logs:
         recall.append(log['eval_recall'])
         f1.append(log['eval_f1'])
         roc_auc.append(log['eval_roc_auc'])
+        loss.append(log['eval_loss'])
 
 print(epochs)
 print(accuracy)
@@ -224,6 +227,7 @@ print(precision)
 print(recall)
 print(f1)
 print(roc_auc)
+print(loss)
 
 print("Evaluation Metrics:")
 print(f"Evaluation Accuracy: {eval_accuracy}")
@@ -237,9 +241,16 @@ print(f"Evaluation ROC_AUC: {eval_roc_auc}")
 predictions = trainer.predict(test_dataset)
 
 # Load trained-model
-model_path = "./results/bertWithoutCrossValidation"
+model_path = "./results/bertWithoutCrossValidation/checkpoint-4"
 model_trained = BertForSequenceClassification(model_path, num_labels=2)
 
+# Define test trainer
+test_trainer = Trainer(model_trained)
+
+raw_pred, _,_ = test_trainer.predict(test_dataset)
+
+y_pred = np.argmax(raw_pred, axis=1)
+print(y_pred)
 
 def plot_metrics(loa, lop, lor, lof, lora):
     plt.figure(figsize=(12,15))

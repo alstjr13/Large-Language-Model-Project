@@ -111,8 +111,6 @@ training_args = TrainingArguments(
     do_eval= True,
 
     # Alter:
-    #adam_beta1=0.9,
-    #adam_beta2=0.999,
     learning_rate=3e-5,
     per_device_train_batch_size=32,
     per_device_eval_batch_size=16,
@@ -233,6 +231,14 @@ print(f"Evaluation Precision: {eval_precision}")
 print(f"Evaluation Recall: {eval_recall}")
 print(f"Evaluation F1: {eval_f1}")
 print(f"Evaluation ROC_AUC: {eval_roc_auc}")
+
+
+# Predictions
+predictions = trainer.predict(test_dataset)
+
+# Load trained-model
+model_path = "./results/bertWithoutCrossValidation"
+model_trained = BertForSequenceClassification(model_path, num_labels=2)
 
 
 def plot_metrics(loa, lop, lor, lof, lora):

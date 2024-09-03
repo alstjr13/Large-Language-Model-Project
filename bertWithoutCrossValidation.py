@@ -17,7 +17,7 @@ warnings.filterwarnings('ignore')
 # reviewText                     (column 0): reviews in text... including incentivized and non-incentivized reviews
 # incentivized_999               (column 1): - 0 : non-incentivized reviews
 #                                            - 1 : incentivized reviews
-filePath = "../../data/updated_review_sample_for_RA.csv"
+filePath = "../data/updated_review_sample_for_RA.csv"
 df = pd.read_csv(filePath)
 
 # Delete any row that has NaN value

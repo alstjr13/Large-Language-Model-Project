@@ -106,7 +106,7 @@ test_dataset = ReviewsDataset(X_test.tolist(), y_test.tolist(), tokenizer, max_l
 
 #optimizer: Default --> AdamW
 training_args = TrainingArguments(
-    output_dir='../results/bert',
+    output_dir='./results/bert',
     overwrite_output_dir= True,
     do_train= True,
     do_eval= True,

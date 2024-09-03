@@ -1,4 +1,5 @@
 import os
+
 import numpy as np
 import pandas as pd
 from transformers import BertTokenizer, BertForSequenceClassification, Trainer, TrainingArguments
@@ -10,13 +11,14 @@ from sklearn.metrics import accuracy_score, roc_auc_score, confusion_matrix, \
 from torch.utils.data import Dataset
 import torch
 import matplotlib.pyplot as plt
-from sklearn.utils.class_weight import compute_class_weight
+#from sklearn.utils.class_weight import compute_class_weight
 import warnings
 warnings.filterwarnings('ignore')
+
 os.environ['PYTORCH_MPS_HIGH_WATERMARK_RATIO'] = '0.0'
 
 # Load sample data set with incentivized reviews as pd.DataFrame
-filePath = '../../data/updated_review_sample_for_RA.csv'
+filePath = '../data/updated_review_sample_for_RA.csv'
 df = pd.read_csv(filePath)
 
 # Delete any row that has NaN value (i.e. Clean)
@@ -62,10 +64,10 @@ print(f"Y Test Set Distribution: \n {pd.Series(y_test).value_counts()}")
 # --------------------------------------------------------------------------------------------------------------------------------
 
 # Create a ReviewDataset with inputs:
-# 1. texts:  reviews of the users (either incentivized or unincentivized - labelled with 0 or 1)
-# 2. labels: corresponding label value --> 0 or 1
-# 3. tokenizer: BERT-Large Tokenizer
-# 4. max_length: set default to 512
+# texts:  reviews of the users (either incentivized or unincentivized - labelled with 0 or 1)
+# labels: corresponding label value --> 0 or 1
+# tokenizer: BERT-Large Tokenizer
+# max_length: set default to 512
 class ReviewsDataset(Dataset):
     def __init__(self, texts, labels, tokenizer, max_length=512):
         self.texts = texts
@@ -114,7 +116,7 @@ training_args = TrainingArguments(
     # Alter:
     adam_beta1=0.9,
     adam_beta2=0.999,
-    learning_rate=1e-4,
+    learning_rate=3e-4,
     per_device_train_batch_size=32,
     per_device_eval_batch_size=32,
 
@@ -141,12 +143,19 @@ Recall = TP / (TP + FN)
 F1 Score = (2 * Precision * Recall) / (Precision + Recall)
 """
 def compute_metrics(p):
+    #predictions, labels = p
     labels = p.label_ids
     preds = p.predictions.argmax(-1)
+    #precision, recall, f1, _ = precision_recall_fscore_support(labels, preds, average="binary")
 
-    print(f"Labels: {labels} \n")
-    print(f"Predictions: {preds} \n")
+    #pred_labels = np.argmax(torch.tensor(predictions), axis=-1)
+    #pred_labels = np.argmax(pred_probs, axis=-1)
 
+    print(f"Labels: {labels}")
+    #print(f"Predicted Labels: {pred_labels}")
+    print(f"Predictions: {preds}")
+
+    #accuracy = accuracy_score(labels, pred_labels)
     accuracy = accuracy_score(labels, preds)
 
     precision = precision_score(labels, preds, average='weighted')
@@ -164,7 +173,7 @@ def compute_metrics(p):
           f"True Positives: {tp} \n"
           f"False Positives: {fp} \n"
           f"True Negatives: {tn} \n"
-          f"False Negatives: {fn} \n")
+          f"False Negatives: {fn}")
     return {
         'accuracy': accuracy,
         'precision': precision,
@@ -188,10 +197,68 @@ print("Beginning to train the model")
 trainer.train()
 
 # Cross validation
-kf = KFold(n_splits=5, shuffle=True, random_state=42)
-fold_epochs = []
-fold_accuracies = []
-result_kf_accuracies = []
+#kf = KFold(n_splits=5, shuffle=True, random_state=42)
+#fold_epochs = []
+#fold_accuracies = []
+#result_kf_accuracies = []
+
+# TODO:
+# (우선순위) 1. 파일 두개 --> bertWithCrossValidation.py , bertWithoutCrossValidation.py
+# (우선순위) 2. bertWithoutCrossValidation.py 런 해서 결과값 스크린샷 첨부 (8월31일 오후까지)
+# (우선순위) 3. cuda 사용가능 하게끔 ~~~
+
+# 3. + MSELoss Plot, object oriented & function
+# 4. bigbird, longformer, bert ~~ bert 를 테스트 삼아 했고, learning_rate, training_batch, training_eval 테스트 ~~~ , ~~~ 한 training argument 를 썼을때, 가장 베스트한 값이 나왔다~~~
+# 5. Final Code:
+#    a. Comment 깔끔하게
+#    b. Code 깔끔하게
+#    c. 알잘딱
+#    d. github README.md
+# ppt, 결과값 (테스트 포함) Plot 스크린샷
+# hyperparameter, learning_rate, training_bath, training_eval, ~~~~,
+
+# Comparison 은 테이블
+"""
+# Epoch 당 cross validation 5번씩:
+for fold, (train_index, val_index) in enumerate(kf.split(X_train)):
+
+    X_train_fold, X_val_fold = X_train.iloc[train_index], X_train.iloc[val_index]
+    y_train_fold, y_val_fold = y_train.iloc[train_index], y_train.iloc[val_index]
+
+    train_dataset = ReviewsDataset(X_train_fold.tolist(), y_train_fold.tolist(), tokenizer, max_length)
+    val_dataset = ReviewsDataset(X_val_fold.tolist(), y_val_fold.tolist(), tokenizer, max_length)
+
+    model = BertForSequenceClassification.from_pretrained('bert-large-cased', num_labels=2)
+
+    trainer = Trainer(
+        model=model,
+        args=training_args,
+        train_dataset=train_dataset,
+        eval_dataset=val_dataset,
+        tokenizer=tokenizer,
+        compute_metrics=compute_metrics,
+    )
+
+    print(f"Cross validation, TRAIN, Fold {fold + 1} / 5")
+    trainer.train()
+
+    # Cross validation history
+    logs_fold = trainer.state.log_history
+
+    for log_fold in logs_fold:
+        if "eval_accuracy" in log_fold:
+            fold_epochs.append(log_fold['epoch'])
+            fold_accuracies.append(log_fold["eval_accuracy"])
+
+    #print(f"Cross validation, Test")
+    #eval_metrics_fold = trainer.evaluate()
+
+    #fold_accuracies.append(eval_metrics_fold.get("eval_accuracy", None))
+    print(fold_accuracies)
+
+    result_kf_accuracies.append(np.mean(fold_accuracies))
+    print(result_kf_accuracies)
+"""
 
 # Evaluate (Test)
 print("Beginning to evaluate the model")
@@ -216,29 +283,6 @@ roc_auc = []
 
 for log in logs:
     if "eval_accuracy" in log:
-        epoch_value = log['epoch']
-        if epochs and epoch_value == epochs[-1]:
-            # Skip the duplicate epoch entry if it already exists
-            continue
-        epochs.append(epoch_value)
-        accuracy.append(log['eval_accuracy'])
-        precision.append(log['eval_precision'])
-        recall.append(log['eval_recall'])
-        f1.append(log['eval_f1'])
-        roc_auc.append(log['eval_roc_auc'])
-
-# Append the test metrics separately if they are different from the final epoch evaluation
-if "Test" not in epochs:
-    epochs.append("Test")
-    accuracy.append(eval_accuracy)
-    precision.append(eval_precision)
-    recall.append(eval_recall)
-    f1.append(eval_f1)
-    roc_auc.append(eval_roc_auc)
-
-"""
-for log in logs:
-    if "eval_accuracy" in log:
         epochs.append(log['epoch'])
         accuracy.append(log['eval_accuracy'])
         precision.append(log['eval_precision'])
@@ -253,13 +297,18 @@ recall.append(eval_recall)
 f1.append(eval_f1)
 roc_auc.append(eval_roc_auc)
 
-"""
-
+print(epochs)
+print(accuracy)
+print(precision)
+print(recall)
+print(f1)
+print(roc_auc)
 
 plt.figure(figsize=(12,8))
 
 plt.subplot(2,3,1)
 plt.plot(epochs, accuracy, label='Accuracy', marker='o')
+#plt.plot(epochs, list(result_kf_accuracies,0,0), label="Cross Validation Accuracy")
 plt.xlabel('Epoch')
 plt.ylabel('Accuracy')
 plt.title('Accuracy per Epoch')

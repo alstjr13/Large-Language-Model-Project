@@ -106,7 +106,7 @@ test_dataset = ReviewsDataset(X_test.tolist(), y_test.tolist(), tokenizer, max_l
 
 #optimizer: Default --> AdamW
 training_args = TrainingArguments(
-    output_dir='./results/bertWithoutCrossValidation',
+    output_dir='../results/bertWithoutCrossValidation',
     overwrite_output_dir= True,                             # Refresh Training every single run
     do_train= True,
     do_eval= True,
@@ -117,7 +117,7 @@ training_args = TrainingArguments(
     per_device_eval_batch_size=16,                          # batch size (on evaluation) :
     # NOTE: BERT uses mini-batch gradient descent
     # Fixed:
-    logging_dir='./logs/bertWithoutCrossValidation',
+    logging_dir='../logs/bertWithoutCrossValidation',
     # num_train_epochs = 4 ~ 5
     # BERT 논문 권장: 2 ~ 4
     num_train_epochs=4,

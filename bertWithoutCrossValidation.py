@@ -24,8 +24,8 @@ df = pd.read_csv(filePath)
 df = df.dropna(subset=["reviewText"])
 
 # Take random samples from the dataset (.csv file)
-notIncentivized = df[df['incentivized_999'] == 0].sample(n=10, random_state=42)
-incentivized = df[df['incentivized_999'] == 1].sample(n=10, random_state=42)
+notIncentivized = df[df['incentivized_999'] == 0].sample(n=300, random_state=42)
+incentivized = df[df['incentivized_999'] == 1].sample(n=300, random_state=42)
 
 # Check if there exist NaN value in the extracted samples:
 hasNaText = incentivized['reviewText'].isna().any()
@@ -151,7 +151,6 @@ def compute_metrics(p):
     f1 = f1_score(labels, preds, average="weighted")
     roc_auc = roc_auc_score(labels, preds)
 
-
     tn, fp, fn, tp = confusion_matrix(labels, preds).ravel()
 
     print(f"Accuracy: {accuracy}, \n"
@@ -229,6 +228,7 @@ print(recall)
 print(f1)
 print(roc_auc)
 print(loss)
+print("\n")
 
 print("Evaluation Metrics:")
 print(f"Evaluation Accuracy: {eval_accuracy}")
@@ -237,12 +237,47 @@ print(f"Evaluation Recall: {eval_recall}")
 print(f"Evaluation F1: {eval_f1}")
 print(f"Evaluation ROC_AUC: {eval_roc_auc}")
 
-epochs.append("Test")
+print("\n Append Evaluation Results")
+epochs.append("Eval")
 accuracy.append(eval_accuracy)
 precision.append(eval_precision)
 recall.append(eval_recall)
 f1.append(eval_f1)
 roc_auc.append(eval_roc_auc)
+
+model_path = '../results/bertWithoutCrossValidation/checkpoint-60'
+model_trained = BertForSequenceClassification.from_pretrained(model_path)
+
+test_trainer = Trainer(model=model_trained)
+
+predictions_output = test_trainer.predict(test_dataset)
+predictions = np.argmax(predictions_output.predictions, axis=1)
+
+y_true = y_test.tolist()
+
+test_accuracy = accuracy_score(y_true, predictions)
+test_precision = precision_score(y_true, predictions)
+test_recall = recall_score(y_true, predictions)
+test_f1 = f1_score(y_true, predictions)
+test_roc_auc = roc_auc_score(y_true, predictions)
+
+
+print("TEST ")
+print(f"y_true: {y_true}")
+print(f"predictions: {predictions}")
+print(f"Test Accuracy: {test_accuracy}")
+print(f"Test Precision: {test_precision}")
+print(f"Test Recall: {test_recall}")
+print(f"Test F1 Score: {test_f1}")
+print(f"Test ROC_AUC: {test_roc_auc}")
+
+print("\n Append Test Results")
+epochs.append("Test")
+accuracy.append(test_accuracy)
+precision.append(test_precision)
+recall.append(test_recall)
+f1.append(test_f1)
+roc_auc.append(test_roc_auc)
 
 """
 # Predictions
@@ -269,35 +304,44 @@ def plot_metrics(loa, lop, lor, lof, lora):
 # Plotting
 plt.figure(figsize=(12,8))
 
+# Accuracy Plot
 plt.subplot(2,3,1)
 plt.plot(epochs, accuracy, label='Accuracy', marker='o')
 plt.xlabel('Epoch')
 plt.ylabel('Accuracy')
 plt.title('Accuracy per Epoch')
 
+# Precision Plot
 plt.subplot(2,3,2)
 plt.plot(epochs, precision, label='Precision', marker='o')
 plt.xlabel('Epoch')
 plt.ylabel('Precision')
 plt.title('Precision per Epoch')
 
+# Recall Plot
 plt.subplot(2,3,3)
 plt.plot(epochs, recall, label='Recall', marker='o')
 plt.xlabel('Epoch')
 plt.ylabel('Recall')
 plt.title('Recall per Epoch')
 
+# F1 Score Plot
 plt.subplot(2,3,4)
 plt.plot(epochs, f1, label='F1 Score', marker='o')
 plt.xlabel('Epoch')
 plt.ylabel('F1 Score')
 plt.title('F1 Score per Epoch')
 
+# ROC_AUC Plot
 plt.subplot(2,3,5)
 plt.plot(epochs, roc_auc, label='ROC_AUC', marker='o')
 plt.xlabel('Epoch')
 plt.ylabel('ROC_AUC')
 plt.title('ROC_AUC per Epoch')
+
+# Heat map
+plt.subplot(2,3,6)
+
 
 plt.tight_layout()
 plt.show()

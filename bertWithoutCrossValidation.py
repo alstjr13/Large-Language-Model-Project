@@ -9,6 +9,7 @@ from sklearn.metrics import accuracy_score, roc_auc_score, confusion_matrix, \
 import torch
 from torch.utils.data import Dataset
 import matplotlib.pyplot as plt
+import seaborn as sns
 
 os.environ['PYTORCH_MPS_HIGH_WATERMARK_RATIO'] = '0.0'
 warnings.filterwarnings('ignore')
@@ -237,13 +238,13 @@ print(f"Evaluation Recall: {eval_recall}")
 print(f"Evaluation F1: {eval_f1}")
 print(f"Evaluation ROC_AUC: {eval_roc_auc}")
 
-print("\n Append Evaluation Results")
-epochs.append("Eval")
-accuracy.append(eval_accuracy)
-precision.append(eval_precision)
-recall.append(eval_recall)
-f1.append(eval_f1)
-roc_auc.append(eval_roc_auc)
+#print("\n Append Evaluation Results")
+#epochs.append("Eval")
+#accuracy.append(eval_accuracy)
+#precision.append(eval_precision)
+#recall.append(eval_recall)
+#f1.append(eval_f1)
+#roc_auc.append(eval_roc_auc)
 
 model_path = '../results/bertWithoutCrossValidation/checkpoint-60'
 model_trained = BertForSequenceClassification.from_pretrained(model_path)
@@ -278,6 +279,8 @@ precision.append(test_precision)
 recall.append(test_recall)
 f1.append(test_f1)
 roc_auc.append(test_roc_auc)
+
+cm = confusion_matrix(y_true, predictions)
 
 """
 # Predictions
@@ -341,7 +344,10 @@ plt.title('ROC_AUC per Epoch')
 
 # Heat map
 plt.subplot(2,3,6)
-
+sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', cbar=False)
+plt.xlabel('Predicted Labels')
+plt.ylabel('True Labels')
+plt.title('Confusion Matrix')
 
 plt.tight_layout()
 plt.show()

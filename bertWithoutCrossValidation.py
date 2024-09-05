@@ -105,10 +105,10 @@ max_length = 512
 train_dataset = ReviewsDataset(X_train.tolist(), y_train.tolist(), tokenizer, max_length)
 test_dataset = ReviewsDataset(X_test.tolist(), y_test.tolist(), tokenizer, max_length)
 
-#optimizer: Default --> AdamW
+
 training_args = TrainingArguments(
     output_dir='../results/bertWithoutCrossValidation',
-    overwrite_output_dir= True,                             # Refresh Training every single run
+    overwrite_output_dir= True,
     do_train= True,
     do_eval= True,
 
@@ -117,10 +117,10 @@ training_args = TrainingArguments(
     per_device_train_batch_size=32,                         # batch size (on training)   :
     per_device_eval_batch_size=16,                          # batch size (on evaluation) :
     # NOTE: BERT uses mini-batch gradient descent
+
     # Fixed:
     logging_dir='../logs/bertWithoutCrossValidation',
     # num_train_epochs = 4 ~ 5
-    # BERT 논문 권장: 2 ~ 4
     num_train_epochs=4,
     eval_strategy="epoch",
     save_strategy="epoch",
@@ -147,9 +147,9 @@ def compute_metrics(p):
     print(f"Predictions: {preds}")
 
     accuracy = accuracy_score(labels, preds)
-    precision = precision_score(labels, preds, average='weighted')
-    recall = recall_score(labels, preds, average='weighted')
-    f1 = f1_score(labels, preds, average="weighted")
+    precision = precision_score(labels, preds)
+    recall = recall_score(labels, preds)
+    f1 = f1_score(labels, preds)
     roc_auc = roc_auc_score(labels, preds)
 
     tn, fp, fn, tp = confusion_matrix(labels, preds).ravel()

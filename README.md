@@ -5,8 +5,7 @@ Skills associated with this git repository:
 - Transformer models including **Bidirectional Encoder Representation from Transformers (BERT), BigBird, Longformer**
 - 
 
-=======
->>>>>>> c39b5510ad769c3416671b12a54100dcdf5f3999
+
 ## Terminology
 **Incentivized Review**: 
 
@@ -27,5 +26,4 @@ Bidirectional Encoder Representations from Transformers (BERT) was used to predi
 
 ## Process of the Workflow
 - Raw data (in .csv file format) 
-=======
->>>>>>> c39b5510ad769c3416671b12a54100dcdf5f3999
+

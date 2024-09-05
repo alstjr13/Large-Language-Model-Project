@@ -4,21 +4,12 @@ import pandas as pd
 filePath = '../data/sample_6k_reviews_for_RA_updated.csv'
 df = pd.read_csv(filePath)
 
-class CleanReview(filePath, df):
-    def __init__(self, filePath, df):
-        self.filePath = filePath
-        self.df = df
-    def removeIncent(self, row):
-        if row['incentivized_999'] == 1:
-            return row['reviewText'].replace(row['incent_bert_highest_score_sent'], '')
-        else:
-            return row['reviewText']
-
 def removeIncent(row):
     if row['incentivized_999'] == 1:
         return row['reviewText'].replace(row['incent_bert_highest_score_sent'], '')
     else:
         return row['reviewText']
+
 
 # Distinguish each columns
 reviewText = df['reviewText']

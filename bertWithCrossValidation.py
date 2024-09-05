@@ -94,3 +94,9 @@ training_args = TrainingArguments(
     load_best_model_at_end=True,
 )
 
+# For each epoch:
+# 5 Cross validation
+
+epochs = 4
+for epoch in range(epochs):
+    pass

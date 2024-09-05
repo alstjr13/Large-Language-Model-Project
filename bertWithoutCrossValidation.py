@@ -14,6 +14,7 @@ import seaborn as sns
 os.environ['PYTORCH_MPS_HIGH_WATERMARK_RATIO'] = '0.0'
 warnings.filterwarnings('ignore')
 
+# ------------------------------------PRE-PROCESSING-DATA____-----------------------------------------------------------
 # Load sample dataset:
 # reviewText                     (column 0): reviews in text... including incentivized and non-incentivized reviews
 # incentivized_999               (column 1): - 0 : non-incentivized reviews
@@ -106,6 +107,7 @@ train_dataset = ReviewsDataset(X_train.tolist(), y_train.tolist(), tokenizer, ma
 test_dataset = ReviewsDataset(X_test.tolist(), y_test.tolist(), tokenizer, max_length)
 
 
+
 training_args = TrainingArguments(
     output_dir='../results/bertWithoutCrossValidation',
     overwrite_output_dir= True,
@@ -113,14 +115,12 @@ training_args = TrainingArguments(
     do_eval= True,
 
     # Alter:
-    learning_rate=3e-5,                                     # α                          : Step-length
-    per_device_train_batch_size=32,                         # batch size (on training)   :
-    per_device_eval_batch_size=16,                          # batch size (on evaluation) :
-    # NOTE: BERT uses mini-batch gradient descent
+    learning_rate=3e-5,
+    per_device_train_batch_size=32,
+    per_device_eval_batch_size=16,
 
     # Fixed:
     logging_dir='../logs/bertWithoutCrossValidation',
-    # num_train_epochs = 4 ~ 5
     num_train_epochs=4,
     eval_strategy="epoch",
     save_strategy="epoch",
@@ -139,6 +139,7 @@ Recall = TP / (TP + FN)
 
 F1 Score = (2 * Precision * Recall) / (Precision + Recall)
 """
+
 def compute_metrics(p):
     labels = p.label_ids
     preds = p.predictions.argmax(-1)
@@ -282,7 +283,7 @@ roc_auc.append(test_roc_auc)
 
 cm = confusion_matrix(y_true, predictions)
 
-"""
+
 # Predictions
 predictions = trainer.predict(test_dataset)
 
@@ -298,7 +299,7 @@ raw_pred, _,_ = test_trainer.predict(test_dataset)
 y_pred = np.argmax(raw_pred, axis=1)
 print("Prediction DEBUG")
 print(y_pred)
-"""
+
 
 def plot_metrics(loa, lop, lor, lof, lora):
     plt.figure(figsize=(12,15))

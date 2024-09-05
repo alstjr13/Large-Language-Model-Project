@@ -1,55 +1,72 @@
 import os
-os.environ['PYTORCH_MPS_HIGH_WATERMARK_RATIO'] = '0.0'
-
+import warnings
+import numpy as np
 import pandas as pd
-from torch.utils.data import Dataset
-from transformers import AutoTokenizer, AutoModelForSequenceClassification, Trainer, TrainingArguments
-import torch
+from transformers import BigBirdTokenizer, BigBirdForSequenceClassification, Trainer, TrainingArguments
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, roc_auc_score, precision_recall_fscore_support, precision_score, \
-    recall_score, f1_score
+from sklearn.metrics import accuracy_score, roc_auc_score, confusion_matrix, \
+    precision_score, recall_score, f1_score
+import torch
+from torch.utils.data import Dataset
 import matplotlib.pyplot as plt
+import seaborn as sns
 
+os.environ['PYTORCH_MPS_HIGH_WATERMARK_RATIO'] = '0.0'
+warnings.filterwarnings('ignore')
 
-# Load sample data set with incentivized reviews as pd.DataFrame
-df = pd.read_csv('../data/cleaned_reviews_with_labels.csv')
+# Load sample dataset:
+# reviewText                     (column 0): reviews in text... including incentivized and non-incentivized reviews
+# incentivized_999               (column 1): - 0 : non-incentivized reviews
+#                                            - 1 : incentivized reviews
+filePath = "../data/updated_review_sample_for_RA.csv"
+df = pd.read_csv(filePath)
 
-# Randomly select 100 incentivized reviews (Labelled with 1)
-#                 100 not incentivized reviews (Labelled with 0)
-notIncentivized = df[df["incentivized_999"] == 0].sample(n=100, random_state=42)
-incentivized = df[df["incentivized_999"] == 1].sample(n=100, random_state=42)
+# Delete any row that has NaN value
+df = df.dropna(subset=["reviewText"])
 
-hasNaText = incentivized['cleanedReviewText'].isna().any()
+# Take random samples from the dataset (.csv file)
+notIncentivized = df[df['incentivized_999'] == 0].sample(n=300, random_state=42)
+incentivized = df[df['incentivized_999'] == 1].sample(n=300, random_state=42)
+
+# Check if there exist NaN value in the extracted samples:
+hasNaText = incentivized['reviewText'].isna().any()
 hasNaLabel = incentivized['incentivized_999'].isna().any()
-print(hasNaText)
-print(hasNaLabel)
+print(hasNaText)  # False
+print(hasNaLabel)  # False
+print("Shape of the non-incentivized:", notIncentivized.shape)  # (10, 3)
+print("Shape of the incentivized:", incentivized.shape)  # (10, 3)
 
-hasNaText = notIncentivized['cleanedReviewText'].isna().any()
-hasNaLabel = notIncentivized['incentivized_999'].isna().any()
-print(hasNaText)
-print(hasNaLabel)
-
+# Merge two dataframes and create size = (200 x 3) pd.DataFrame
 newdf = pd.concat([notIncentivized, incentivized])
 newdf = newdf.sample(frac=1, random_state=42).reset_index(drop=True)
+print(newdf.shape)
 
-#print(newdf)
+# Drop newdf['incent_bert_highest_score_sent'] column
+newdf = newdf.drop(['incent_bert_highest_score_sent'], axis=1)
+print(newdf)
+print(newdf.shape)
+
+# Check for NaN values in the entire DataFrame
+has_nan = newdf.isnull().values.any()
+print(f"Does the DataFrame contain NaN values? {has_nan}")
+
 # Split the data
-X = newdf["cleanedReviewText"]
+X = newdf["reviewText"]
 y = newdf["incentivized_999"]
 
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+# Default = 8:2
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, shuffle=True)
 
+print(f"Y Training Set Distribution: \n {pd.Series(y_train).value_counts()}")
+print(f"Y Test Set Distribution: \n {pd.Series(y_test).value_counts()}")
 
-print(X_train.shape)
-print(X_test.shape)
-print(y_train.shape)
-print(y_test.shape)
+# --------------------------------------------------------------------------------------------------------------------------------
 
 # Create a ReviewDataset with inputs:
-# 1. texts:  reviews of the users (either incentivized or unincentivized - labelled with 0 or 1)
-# 2. labels: corresponding label value --> 0 or 1
-# 3. tokenizer: BERT-Large Tokenizer
-# 4. max_length: set default to 4096
+# texts:  reviews of the users (either incentivized or unincentivized - labelled with 0 or 1)
+# labels: corresponding label value --> 0 or 1
+# tokenizer: BERT-Large Tokenizer
+# max_length: set default to 512
 class ReviewsDataset(Dataset):
     def __init__(self, texts, labels, tokenizer, max_length=4096):
         self.texts = texts
@@ -77,38 +94,75 @@ class ReviewsDataset(Dataset):
             'labels': torch.tensor(label, dtype=torch.long)
         }
 
-# Initialize Bigbird-RoBERTa-large Tokenizer with maxlength =
-tokenizer = AutoTokenizer.from_pretrained('google/bigbird-roberta-large')
+# --------------------------------------------------------------------------------------------------------------------------------
+
+# Initialize BERT-large model and tokenizer with maxlength = 512
+model = BigBirdForSequenceClassification.from_pretrained('google/bigbird-roberta-large', num_labels=2)
+tokenizer = BigBirdTokenizer.from_pretrained('google/bigbird-roberta-large')
 max_length = 4096
 
-# Datasets to feed into BERT-Large
+# Datasets to feed into BERT-Large: ReviewDataset(Dataset)
 train_dataset = ReviewsDataset(X_train.tolist(), y_train.tolist(), tokenizer, max_length)
 test_dataset = ReviewsDataset(X_test.tolist(), y_test.tolist(), tokenizer, max_length)
 
-# Initialize BERT-large
-model = AutoModelForSequenceClassification.from_pretrained('google/bigbird-roberta-large', num_labels=2)
-
+#optimizer: Default --> AdamW
 training_args = TrainingArguments(
-    output_dir='./results/bigbird',
-    num_train_epochs=3,
-    per_device_train_batch_size=8,
-    per_device_eval_batch_size=8,
+    output_dir='../results/Birbird',
+    overwrite_output_dir= True,                             # Refresh Training every single run
+    do_train= True,
+    do_eval= True,
+
+    # Alter:
+    learning_rate=3e-5,                                     # α                          : Step-length
+    per_device_train_batch_size=32,                         # batch size (on training)   :
+    per_device_eval_batch_size=16,                          # batch size (on evaluation) :
+    # NOTE: BERT uses mini-batch gradient descent
+    # Fixed:
+    logging_dir='../logs/Bigbird',
+    # num_train_epochs = 4 ~ 5
+    # BERT 논문 권장: 2 ~ 4
+    num_train_epochs=4,
+    eval_strategy="epoch",
+    save_strategy="epoch",
     warmup_steps=500,
     weight_decay=0.01,
-    logging_dir='./logs/bigbird',
-    logging_steps=10,
-    eval_strategy="epoch"
+    logging_steps=5,
+    load_best_model_at_end=True,
 )
+
+"""
+Accuracy = (TP + TN) / (TP + TN + FP + FN)
+
+Precision = TP / (TP + FP)
+
+Recall = TP / (TP + FN)
+
+F1 Score = (2 * Precision * Recall) / (Precision + Recall)
+"""
 def compute_metrics(p):
-    pred = p.predictions.argmax(-1)
-    accuracy = accuracy_score(p.label_ids, pred, average='binary')
-    precision = precision_score(p.label_ids, pred, average='binary')
-    recall = recall_score(p.label_ids, pred, average='binary')
-    f1 = f1_score(p.label_ids, pred, average='binary')
-    roc_auc = roc_auc_score(p.label_ids, p.predictions[:, 1])
-    #precision, recall, f1, _ = precision_recall_fscore_support(p.label_ids, pred, average='binary')
-    #accuracy = accuracy_score(p.label_ids, pred)
-    #roc_auc = roc_auc_score(p.label_ids, p.predictions[:, 1])
+    labels = p.label_ids
+    preds = p.predictions.argmax(-1)
+
+    print(f"Labels: {labels}")
+    print(f"Predictions: {preds}")
+
+    accuracy = accuracy_score(labels, preds)
+    precision = precision_score(labels, preds, average='weighted')
+    recall = recall_score(labels, preds, average='weighted')
+    f1 = f1_score(labels, preds, average="weighted")
+    roc_auc = roc_auc_score(labels, preds)
+
+    tn, fp, fn, tp = confusion_matrix(labels, preds).ravel()
+
+    print(f"Accuracy: {accuracy}, \n"
+          f"Precision: {precision}, \n"
+          f"Recall: {recall}, \n"
+          f"F1 Score: {f1}, \n"
+          f"AUC: {roc_auc} \n"
+          f"True Positives: {tp} \n"
+          f"False Positives: {fp} \n"
+          f"True Negatives: {tn} \n"
+          f"False Negatives: {fn}")
     return {
         'accuracy': accuracy,
         'precision': precision,
@@ -123,84 +177,177 @@ trainer = Trainer(
     args=training_args,
     train_dataset=train_dataset,
     eval_dataset=test_dataset,
-    compute_metrics=compute_metrics
+    tokenizer=tokenizer,
+    compute_metrics=compute_metrics,
 )
 
+# Train
+print("Beginning to train the model")
+trainer.train()
 
-# Train the model
-print("Training the model")
-#trainer.train()
+# Evaluate (Test)
+print("Beginning to evaluate the model")
+eval_metrics = trainer.evaluate()
 
-# Evaluate the model
-print("Evaluating the model")
-#evaluation_results = trainer.evaluate()
+# Metrics from the testing stage
+eval_accuracy = eval_metrics.get("eval_accuracy", None)
+eval_precision = eval_metrics.get("eval_precision", None)
+eval_recall = eval_metrics.get("eval_recall", None)
+eval_f1 = eval_metrics.get("eval_f1", None)
+eval_roc_auc = eval_metrics.get("eval_roc_auc", None)
 
-# Plot the results
+# Metrics logs
+logs = trainer.state.log_history
 
-# Store the metrics for each epoch
-metrics_per_epoch = []
-# Custom training loop to get metrics after each epoch
-for epoch in range(training_args.num_train_epochs):
-    trainer.train()
-    print("Training the model")
-    eval_metrics = trainer.evaluate()
-    metrics_per_epoch.append(eval_metrics)
-    print(f"Epoch {epoch+1} - {eval_metrics}")
+epochs = []
+accuracy = []
+precision = []
+recall = []
+f1 = []
+roc_auc = []
+loss = []
 
-# Final evaluation on the test set
-print("Evaluating the model on test set")
-test_metrics = trainer.evaluate(eval_dataset=test_dataset)
-metrics_per_epoch.append(test_metrics)
-print(f"Test - {test_metrics}")
+# Epoch 1,2,3,4
+for log in logs:
+    if "eval_accuracy" in log:
+        epoch_value = log['epoch']
+        if epochs and epoch_value == epochs[-1]:
+            continue
+        epochs.append(epoch_value)
+        accuracy.append(log['eval_accuracy'])
+        precision.append(log['eval_precision'])
+        recall.append(log['eval_recall'])
+        f1.append(log['eval_f1'])
+        roc_auc.append(log['eval_roc_auc'])
+        loss.append(log['eval_loss'])
 
+print("Epochs Metrics:")
+print(epochs)
+print(accuracy)
+print(precision)
+print(recall)
+print(f1)
+print(roc_auc)
+print(loss)
+print("\n")
 
-# Plot the results
-def plot_metrics(metrics_per_epoch):
-    epochs = list(range(1, len(metrics_per_epoch)))
-    epochs.append('Test')
+print("Evaluation Metrics:")
+print(f"Evaluation Accuracy: {eval_accuracy}")
+print(f"Evaluation Precision: {eval_precision}")
+print(f"Evaluation Recall: {eval_recall}")
+print(f"Evaluation F1: {eval_f1}")
+print(f"Evaluation ROC_AUC: {eval_roc_auc}")
 
-    accuracy = [metrics['eval_accuracy'] for metrics in metrics_per_epoch]
-    precision = [metrics['eval_precision'] for metrics in metrics_per_epoch]
-    recall = [metrics['eval_recall'] for metrics in metrics_per_epoch]
-    f1 = [metrics['eval_f1'] for metrics in metrics_per_epoch]
-    auc = [metrics['eval_roc_auc'] for metrics in metrics_per_epoch]
+#print("\n Append Evaluation Results")
+#epochs.append("Eval")
+#accuracy.append(eval_accuracy)
+#precision.append(eval_precision)
+#recall.append(eval_recall)
+#f1.append(eval_f1)
+#roc_auc.append(eval_roc_auc)
 
-    plt.figure(figsize=(15, 10))
+model_path = '../results/bertWithoutCrossValidation/checkpoint-60'
+model_trained = BigBirdForSequenceClassification.from_pretrained(model_path)
 
-    plt.subplot(3, 2, 1)
-    plt.plot(epochs, accuracy, marker='o')
-    plt.title('Accuracy')
+test_trainer = Trainer(model=model_trained)
 
-    plt.subplot(3, 2, 2)
-    plt.plot(epochs, precision, marker='o')
-    plt.title('Precision')
+predictions_output = test_trainer.predict(test_dataset)
+predictions = np.argmax(predictions_output.predictions, axis=1)
 
-    plt.subplot(3, 2, 3)
-    plt.plot(epochs, recall, marker='o')
-    plt.title('Recall')
+y_true = y_test.tolist()
 
-    plt.subplot(3, 2, 4)
-    plt.plot(epochs, f1, marker='o')
-    plt.title('F1 Score')
-
-    plt.subplot(3, 2, 5)
-    plt.plot(epochs, auc, marker='o')
-    plt.title('AUC')
-
-    plt.tight_layout()
-    plt.show()
-
-plot_metrics(metrics_per_epoch)
-
-
-
-
-print("")
-print(evaluation_results)
-
-
-
-
-
+test_accuracy = accuracy_score(y_true, predictions)
+test_precision = precision_score(y_true, predictions)
+test_recall = recall_score(y_true, predictions)
+test_f1 = f1_score(y_true, predictions)
+test_roc_auc = roc_auc_score(y_true, predictions)
 
 
+print("TEST ")
+print(f"y_true: {y_true}")
+print(f"predictions: {predictions}")
+print(f"Test Accuracy: {test_accuracy}")
+print(f"Test Precision: {test_precision}")
+print(f"Test Recall: {test_recall}")
+print(f"Test F1 Score: {test_f1}")
+print(f"Test ROC_AUC: {test_roc_auc}")
+
+print("\n Append Test Results")
+epochs.append("Test")
+accuracy.append(test_accuracy)
+precision.append(test_precision)
+recall.append(test_recall)
+f1.append(test_f1)
+roc_auc.append(test_roc_auc)
+
+cm = confusion_matrix(y_true, predictions)
+
+"""
+# Predictions
+predictions = trainer.predict(test_dataset)
+
+# Load trained-model
+model_path = "./results/bertWithoutCrossValidation/checkpoint-4"
+model_trained = BertForSequenceClassification.from_pretrained(model_path)
+
+# Define test trainer
+test_trainer = Trainer(model_trained)
+
+raw_pred, _,_ = test_trainer.predict(test_dataset)
+
+y_pred = np.argmax(raw_pred, axis=1)
+print("Prediction DEBUG")
+print(y_pred)
+"""
+
+def plot_metrics(loa, lop, lor, lof, lora):
+    plt.figure(figsize=(12,15))
+    pass
+
+# Plotting
+plt.figure(figsize=(12,8))
+
+# Accuracy Plot
+plt.subplot(2,3,1)
+plt.plot(epochs, accuracy, label='Accuracy', marker='o')
+plt.xlabel('Epoch')
+plt.ylabel('Accuracy')
+plt.title('Accuracy per Epoch')
+
+# Precision Plot
+plt.subplot(2,3,2)
+plt.plot(epochs, precision, label='Precision', marker='o')
+plt.xlabel('Epoch')
+plt.ylabel('Precision')
+plt.title('Precision per Epoch')
+
+# Recall Plot
+plt.subplot(2,3,3)
+plt.plot(epochs, recall, label='Recall', marker='o')
+plt.xlabel('Epoch')
+plt.ylabel('Recall')
+plt.title('Recall per Epoch')
+
+# F1 Score Plot
+plt.subplot(2,3,4)
+plt.plot(epochs, f1, label='F1 Score', marker='o')
+plt.xlabel('Epoch')
+plt.ylabel('F1 Score')
+plt.title('F1 Score per Epoch')
+
+# ROC_AUC Plot
+plt.subplot(2,3,5)
+plt.plot(epochs, roc_auc, label='ROC_AUC', marker='o')
+plt.xlabel('Epoch')
+plt.ylabel('ROC_AUC')
+plt.title('ROC_AUC per Epoch')
+
+# Heat map
+plt.subplot(2,3,6)
+sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', cbar=False)
+plt.xlabel('Predicted Labels')
+plt.ylabel('True Labels')
+plt.title('Confusion Matrix')
+
+plt.tight_layout()
+plt.show()

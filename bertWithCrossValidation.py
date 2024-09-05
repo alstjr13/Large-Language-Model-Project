@@ -80,5 +80,17 @@ train_dataset = ReviewDataset(train_encodings, train_labels)
 validation_dataset = ReviewDataset(validation_encodings, validation_labels)
 test_dataset = ReviewDataset(test_encodings, test_labels)
 
-
+training_args = TrainingArguments(
+    output_dir="../results/bertWithCrossValidation",
+    num_train_epochs = 4,
+    per_device_train_batch_size=32,
+    per_device_eval_batch_size=16,
+    warmup_steps=500,
+    weight_decay=0.01,
+    logging_dir='../logs/bertWithCrossValidation',
+    eval_strategy='epoch',
+    save_strategy="epoch",
+    logging_steps=5,
+    load_best_model_at_end=True,
+)
 

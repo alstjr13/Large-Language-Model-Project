@@ -118,6 +118,8 @@ training_args = TrainingArguments(
     learning_rate=3e-5,
     per_device_train_batch_size=32,
     per_device_eval_batch_size=16,
+    adam_beta1=0.9,
+    adam_beta2=0.99,
 
     # Fixed:
     logging_dir='../logs/bertWithoutCrossValidation',
@@ -172,13 +174,13 @@ def compute_metrics(p):
         'roc_auc': roc_auc
     }
 
-# Initialize the Trainer
+# Trainer
 trainer = Trainer(
-    model=model,
+    model=model,                    # BertForSequenceClassification.from_pretrained('bert-large-cased', num_labels=2)
     args=training_args,
     train_dataset=train_dataset,
     eval_dataset=test_dataset,
-    tokenizer=tokenizer,
+    tokenizer=tokenizer,            # BertTokenizer.from_pretrained('bert-large-cased')
     compute_metrics=compute_metrics,
 )
 
@@ -310,35 +312,35 @@ plt.figure(figsize=(12,8))
 
 # Accuracy Plot
 plt.subplot(2,3,1)
-plt.plot(epochs, accuracy, label='Accuracy', marker='o')
+plt.plot(epochs, accuracy, marker='o')
 plt.xlabel('Epoch')
 plt.ylabel('Accuracy')
 plt.title('Accuracy per Epoch')
 
 # Precision Plot
 plt.subplot(2,3,2)
-plt.plot(epochs, precision, label='Precision', marker='o')
+plt.plot(epochs, precision, marker='o')
 plt.xlabel('Epoch')
 plt.ylabel('Precision')
 plt.title('Precision per Epoch')
 
 # Recall Plot
 plt.subplot(2,3,3)
-plt.plot(epochs, recall, label='Recall', marker='o')
+plt.plot(epochs, recall, marker='o')
 plt.xlabel('Epoch')
 plt.ylabel('Recall')
 plt.title('Recall per Epoch')
 
 # F1 Score Plot
 plt.subplot(2,3,4)
-plt.plot(epochs, f1, label='F1 Score', marker='o')
+plt.plot(epochs, f1, marker='o')
 plt.xlabel('Epoch')
 plt.ylabel('F1 Score')
 plt.title('F1 Score per Epoch')
 
 # ROC_AUC Plot
 plt.subplot(2,3,5)
-plt.plot(epochs, roc_auc, label='ROC_AUC', marker='o')
+plt.plot(epochs, roc_auc, marker='o')
 plt.xlabel('Epoch')
 plt.ylabel('ROC_AUC')
 plt.title('ROC_AUC per Epoch')

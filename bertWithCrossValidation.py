@@ -97,6 +97,6 @@ training_args = TrainingArguments(
 # For each epoch:
 # 5 Cross validation
 
-epochs = 4
-for epoch in range(epochs):
+num_epochs = 4
+for epoch in range(num_epochs):
     pass

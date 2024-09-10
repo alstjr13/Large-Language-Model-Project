@@ -7,6 +7,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, roc_auc_score, confusion_matrix, \
     precision_score, recall_score, f1_score
 import torch
+from torch.nn import CrossEntropyLoss
 from torch.utils.data import Dataset
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -106,8 +107,6 @@ max_length = 512
 train_dataset = ReviewsDataset(X_train.tolist(), y_train.tolist(), tokenizer, max_length)
 test_dataset = ReviewsDataset(X_test.tolist(), y_test.tolist(), tokenizer, max_length)
 
-
-
 training_args = TrainingArguments(
     output_dir='../results/bertWithoutCrossValidation',
     overwrite_output_dir= True,
@@ -123,6 +122,7 @@ training_args = TrainingArguments(
 
     # Fixed:
     logging_dir='../logs/bertWithoutCrossValidation',
+    #max_grad_norm= 15,
     num_train_epochs=4,
     eval_strategy="epoch",
     save_strategy="epoch",
@@ -302,6 +302,14 @@ y_pred = np.argmax(raw_pred, axis=1)
 print("Prediction DEBUG")
 print(y_pred)
 
+# Loss function
+predictions, labels, _ = test_trainer.predict(test_dataset)
+predictions = torch.tensor(predictions)
+labels = torch.tensor(labels)
+
+# Compute CrossEntropyLoss
+loss_fn = CrossEntropyLoss()
+loss = loss_fn(predictions, labels)
 
 def plot_metrics(loa, lop, lor, lof, lora):
     plt.figure(figsize=(12,15))

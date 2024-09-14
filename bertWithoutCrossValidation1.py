@@ -57,5 +57,6 @@ print(f"Training Set Distribution: \n {pd.Series(train_labels).value_counts()}")
 print(f"Validation Set Distribution: \n {pd.Series(validation_labels).value_counts()}")
 print(f"Test Set Distribution: \n {pd.Series(test_labels).value_counts()}")
 
+# Create ReviewDataset(Dataset), with encodings
 
 

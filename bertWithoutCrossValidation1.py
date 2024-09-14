@@ -22,5 +22,23 @@ warnings.filterwarnings('ignore')
 # reviewText                     (column 0): reviews in text... including incentivized and non-incentivized reviews
 # incentivized_999               (column 1): - 0 : non-incentivized reviews
 #                                            - 1 : incentivized reviews
+# incent_bert_highest_score_sent (column 2): sentence with highest probability of being "disclosure sentence" in reviewText
 filePath = "../data/updated_review_sample_for_RA.csv"
 df = pd.read_csv(filePath)
+
+# Delete any row that has NaN value
+df = df.dropna(subset=["reviewText"])
+
+# Take random samples from the dataset
+notIncentivized = df[df['incentivized_999'] == 0].sample(n=300, random_state=42)
+incentivized =df[df['incentivized_999'] == 1].sample(n=300, random_state=42)
+
+# Combine random samples
+df = pd.concat([notIncentivized, incentivized])
+
+# Drop unnecessary column
+df = df.drop(['incent_bert_highest_score_sent'], axis=1)
+
+# Reset index and shuffle sample
+df = df.sample(frac=1, random_state=42).reset_index(drop=True)
+print(df)

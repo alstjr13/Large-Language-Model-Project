@@ -12,6 +12,8 @@ from torch.utils.data import Dataset
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+import utils
+
 # Enable memory use
 os.environ['PYTORCH_MPS_HIGH_WATERMARK_RATIO'] = '0.0'
 warnings.filterwarnings('ignore')
@@ -41,4 +43,19 @@ df = df.drop(['incent_bert_highest_score_sent'], axis=1)
 
 # Reset index and shuffle sample
 df = df.sample(frac=1, random_state=42).reset_index(drop=True)
-print(df)
+
+df = df.rename(columns={"reviewText" : "texts", "incentivized_999": "labels"})
+X = df["Text"]
+y = df["labels"]
+
+
+# Split data to Train, Validation and Test (0.72 : 0.18 : 0.1 Ratio)
+train_texts, train_labels, validation_texts, validation_labels, test_texts, test_labels = utils.data_split(X, y)
+
+# Print number of labels in splited data
+print(f"Training Set Distribution: \n {pd.Series(train_labels).value_counts()}")
+print(f"Validation Set Distribution: \n {pd.Series(validation_labels).value_counts()}")
+print(f"Test Set Distribution: \n {pd.Series(test_labels).value_counts()}")
+
+
+

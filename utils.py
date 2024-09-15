@@ -3,7 +3,40 @@ from tqdm import tqdm
 import torch
 import pandas as pd
 from sklearn.model_selection import train_test_split
+from torch.utils.data import Dataset
 
+
+# Create a ReviewDataset with inputs:
+# texts: reviews of the users (either incentivized or unincentivized - labelled with 0 or 1)
+# labels: corresponding label value --> 0 or 1
+# tokenizer: BERT-Large Tokenizer
+# max_length: set default to 512
+class ReviewDataset(Dataset):
+    def __init__(self, texts, labels, tokenizer, max_length):
+        self.texts = texts
+        self.labels = labels
+        self.tokenizer = tokenizer
+        self.max_length = max_length
+    def __len__(self):
+        return len(self.texts)
+    def __getitem__(self, idx):
+        text = self.texts[idx]
+        label = self.labels[idx]
+        encoding = self.tokenizer.encode_plus(
+            text,
+            max_length=self.max_length,
+            return_token_type_ids=False,
+            padding='max_length',
+            truncation=True,
+            return_attention_mask=True,
+            return_tensors='pt',
+        )
+        return {
+            'text': text,
+            'input_ids': encoding['input_ids'].flatten(),
+            'attention_mask': encoding['attention_mask'].flatten(),
+            'labels': torch.tensor(label, dtype=torch.long)
+        }
 
 # Resulting data split:
 # Train = 72 %
@@ -32,3 +65,4 @@ def is_nan(x) -> bool:
     :return: single bool, True -> x contains NaN, False -> x does not contain NaN
     """
     return x.isnull().values.any()
+

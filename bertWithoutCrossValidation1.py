@@ -57,6 +57,15 @@ print(f"Training Set Distribution: \n {pd.Series(train_labels).value_counts()}")
 print(f"Validation Set Distribution: \n {pd.Series(validation_labels).value_counts()}")
 print(f"Test Set Distribution: \n {pd.Series(test_labels).value_counts()}")
 
+# Initialize BERT Large Model and BERT Large Tokenizer
+model = BertForSequenceClassification.from_pretrained("bert-large-cased", num_labels=2)
+tokenizer = BertTokenizer.from_pretrained('bert-large-cased')
+max_length = 512
+
 # Create ReviewDataset(Dataset), with encodings
+trainDataset = utils.ReviewDataset(train_texts, train_labels, tokenizer=tokenizer, max_length=max_length)
+validationDataset = utils.ReviewDataset(validation_texts, validation_labels, tokenizer=tokenizer, max_length=max_length)
+testDataset = utils.ReviewDataset(test_texts, test_labels, tokenizer=tokenizer, max_length=max_length)
+
 
 

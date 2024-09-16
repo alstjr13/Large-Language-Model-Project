@@ -140,5 +140,28 @@ trainer = Trainer(
     compute_metrics=compute_metrics,
 )
 
+# ----------------------------------------------------TRAINING----------------------------------------------------------
+# Train pretrained model
+print("Beginning to train the model")
+trainer.train()
+
+print("Training Done")
+
+# Evaluate the trained model
+print("Beginning to evaluate the model")
+eval_metrics = trainer.evaluate()
+
+# Get metrics from the evaluation
+eval_accuracy = eval_metrics.get("eval_accuracy", None)
+eval_precision = eval_metrics.get("eval_precision", None)
+eval_recall = eval_metrics.get("eval_recall", None)
+eval_f1 = eval_metrics.get("eval_f1", None)
+eval_roc_auc = eval_metrics.get("eval_roc_auc", None)
+
+# Metrics logs
+logs = trainer.state.log_history
+
+
+
 
 

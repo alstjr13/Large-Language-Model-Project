@@ -53,10 +53,10 @@ def data_split(X, y):
     :return: texts (train), labels (train), texts (validation), labels (validation), texts (test), labels (test)
     """
 
-    X_train_temp, X_test_temp, y_train, y_test = train_test_split(X, y, test_size=0.1, random_state=42, shuffle=True)
-    X_train, X_test, valid_train, valid_test = train_test_split(X_train_temp, X_test_temp, train_size=0.8, test_size=0.2)
+    X_train_temp, X_test, y_train_temp, y_test = train_test_split(X, y, test_size=0.1, random_state=42, shuffle=True)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_train_temp, y_train_temp, train_size=0.8, test_size=0.2)
 
-    return X_train, X_test, valid_train, valid_test, y_train, y_test
+    return X_train, y_train, X_valid, y_valid, X_test, y_test
 
 def is_nan(x) -> bool:
     """

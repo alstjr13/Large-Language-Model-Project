@@ -45,9 +45,8 @@ df = df.drop(['incent_bert_highest_score_sent'], axis=1)
 df = df.sample(frac=1, random_state=42).reset_index(drop=True)
 
 df = df.rename(columns={"reviewText" : "texts", "incentivized_999": "labels"})
-X = df["Text"]
+X = df["texts"]
 y = df["labels"]
-
 
 # Split data to Train, Validation and Test (0.72 : 0.18 : 0.1 Ratio)
 train_texts, train_labels, validation_texts, validation_labels, test_texts, test_labels = utils.data_split(X, y)
@@ -63,9 +62,18 @@ tokenizer = BertTokenizer.from_pretrained('bert-large-cased')
 max_length = 512
 
 # Create ReviewDataset(Dataset), with encodings
-trainDataset = utils.ReviewDataset(train_texts, train_labels, tokenizer=tokenizer, max_length=max_length)
-validationDataset = utils.ReviewDataset(validation_texts, validation_labels, tokenizer=tokenizer, max_length=max_length)
-testDataset = utils.ReviewDataset(test_texts, test_labels, tokenizer=tokenizer, max_length=max_length)
+trainDataset = utils.ReviewDataset(train_texts.tolist(), train_labels.tolist(), tokenizer=tokenizer, max_length=max_length)
+validationDataset = utils.ReviewDataset(validation_texts.tolist(), validation_labels.tolist(), tokenizer=tokenizer, max_length=max_length)
+testDataset = utils.ReviewDataset(test_texts.tolist(), test_labels.tolist(), tokenizer=tokenizer, max_length=max_length)
 
 
+
+"""
+
+print(trainDataset)
+
+if __name__ == "__main__":
+    pass
+
+"""
 

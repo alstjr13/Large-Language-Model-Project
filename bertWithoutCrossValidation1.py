@@ -66,6 +66,7 @@ trainDataset = utils.ReviewDataset(train_texts.tolist(), train_labels.tolist(), 
 validationDataset = utils.ReviewDataset(validation_texts.tolist(), validation_labels.tolist(), tokenizer=tokenizer, max_length=max_length)
 testDataset = utils.ReviewDataset(test_texts.tolist(), test_labels.tolist(), tokenizer=tokenizer, max_length=max_length)
 
+# --------------------------------------------FINE-TUNING---------------------------------------------------------------
 training_args = TrainingArguments(
     output_dir='../results/bert/bertWithoutCrossValidation',
     overwrite_output_dir=True,
@@ -129,12 +130,15 @@ def compute_metrics(p):
         'roc_auc': roc_auc
     }
 
-"""
+# Initialize Trainer to train the pre-trained model
+trainer = Trainer(
+    model=model,                        # BertForSequenceClassification.from_pretrained('bert-large-cased', num_labels=2)
+    args=training_args,
+    train_dataset=trainDataset,
+    eval_dataset=testDataset,
+    tokenizer=tokenizer,                # BertTokenizer.from_pretrained('bert-large-cased')
+    compute_metrics=compute_metrics,
+)
 
-print(trainDataset)
 
-if __name__ == "__main__":
-    pass
-
-"""
 

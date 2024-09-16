@@ -66,7 +66,68 @@ trainDataset = utils.ReviewDataset(train_texts.tolist(), train_labels.tolist(), 
 validationDataset = utils.ReviewDataset(validation_texts.tolist(), validation_labels.tolist(), tokenizer=tokenizer, max_length=max_length)
 testDataset = utils.ReviewDataset(test_texts.tolist(), test_labels.tolist(), tokenizer=tokenizer, max_length=max_length)
 
+training_args = TrainingArguments(
+    output_dir='../results/bert/bertWithoutCrossValidation',
+    overwrite_output_dir=True,
+    do_train=True,
+    do_eval=True,
 
+    # Alter
+    learning_rate=3e-5,
+    per_device_train_batch_size=32,
+    per_device_eval_batch_size=16,
+    adam_beta1=0.9,
+    adam_beta2=0.99,
+
+    # Fixed
+    logging_dir='../logs/bert/bertWithoutCrossValidation',
+    num_train_epochs=4,
+    eval_strategy='epoch',
+    save_strategy='epoch',
+    warmup_steps=500,
+    weight_decay=0.01,
+    logging_steps=5,
+    load_best_model_at_end=True,
+)
+
+def compute_metrics(p):
+    """
+    Computes the accuracy, precision, recall, F1, ROC_AUC of the input predictions
+    :param p: predictions
+    :return: accuracy, precision, recall, f1, roc_auc
+    """
+    labels = p.label_ids
+    preds = p.predictions.argmax(-1)
+
+    # For DEBUGGING
+    print(f"Labels: {labels} \n")
+    print(f"Predictions: {preds}")
+
+    accuracy = accuracy_score(labels, preds)
+    precision = precision_score(labels, preds)
+    recall = recall_score(labels, preds)
+    f1 = f1_score(labels, preds)
+    roc_auc = roc_auc_score(labels, preds)
+
+    tn, fp, fn, tp = confusion_matrix(labels, preds).ravel()
+
+    # For DEBUGGING
+    print(f"Accuracy: {accuracy}, \n"
+          f"Precision: {precision}, \n"
+          f"Recall: {recall}, \n"
+          f"F1 Score: {f1}, \n"
+          f"AUC: {roc_auc} \n"
+          f"True Positives: {tp} \n"
+          f"False Positives: {fp} \n"
+          f"True Negatives: {tn} \n"
+          f"False Negatives: {fn}")
+    return {
+        'accuracy': accuracy,
+        'precision': precision,
+        'recall': recall,
+        'f1': f1,
+        'roc_auc': roc_auc
+    }
 
 """
 

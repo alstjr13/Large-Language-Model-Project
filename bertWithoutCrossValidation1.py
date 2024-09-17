@@ -15,8 +15,11 @@ import seaborn as sns
 import utils
 
 # Enable memory use
-os.environ['PYTORCH_MPS_HIGH_WATERMARK_RATIO'] = '0.0'
+#os.environ['PYTORCH_MPS_HIGH_WATERMARK_RATIO'] = '0.0'
 warnings.filterwarnings('ignore')
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Using device: {device}")
 
 # ---------------------------------------PRE-PROCESSING-DATA---------------------------------------------------------
 
@@ -60,6 +63,9 @@ print(f"Test Set Distribution: \n {pd.Series(test_labels).value_counts()}")
 model = BertForSequenceClassification.from_pretrained("bert-large-cased", num_labels=2)
 tokenizer = BertTokenizer.from_pretrained('bert-large-cased')
 max_length = 512
+
+# GPU or CPU
+model.to(device)
 
 # Create ReviewDataset(Dataset), with encodings
 trainDataset = utils.ReviewDataset(train_texts.tolist(), train_labels.tolist(), tokenizer=tokenizer, max_length=max_length)
@@ -151,6 +157,20 @@ print("Training Done")
 print("Beginning to evaluate the model")
 eval_metrics = trainer.evaluate()
 
+# ---------------------------------------------------CROSS-VALIDATION---------------------------------------------------
+from sklearn.model_selection import KFold, cross_val_score
+
+kf = KFold(n_splits=5, shuffle=True, random_state=42)
+
+for fold, (train_index, valid_index) in enumerate(kf.split(train_texts)):
+    print(f"Begin Fold {fold + 1}")
+
+
+
+# ---------------------------------------------------METRICS------------------------------------------------------------
+epochs = []
+
+
 # Get metrics from the evaluation
 eval_accuracy = eval_metrics.get("eval_accuracy", None)
 eval_precision = eval_metrics.get("eval_precision", None)
@@ -160,6 +180,8 @@ eval_roc_auc = eval_metrics.get("eval_roc_auc", None)
 
 # Metrics logs
 logs = trainer.state.log_history
+
+
 
 
 

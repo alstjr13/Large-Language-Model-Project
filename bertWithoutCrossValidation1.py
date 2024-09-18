@@ -148,30 +148,54 @@ trainer = Trainer(
 
 # ----------------------------------------------------TRAINING----------------------------------------------------------
 # Train pretrained model
-print("Beginning to train the model")
-trainer.train()
+#print("Beginning to train the model")
+#trainer.train()
 
-print("Training Done")
+#print("Training Done")
 
 # Evaluate the trained model
-print("Beginning to evaluate the model")
-eval_metrics = trainer.evaluate()
+#print("Beginning to evaluate the model")
+#eval_metrics = trainer.evaluate()
 
 # ---------------------------------------------------CROSS-VALIDATION---------------------------------------------------
 from sklearn.model_selection import KFold, cross_val_score
-
+crossval_results = []
 kf = KFold(n_splits=5, shuffle=True, random_state=42)
 
 for fold, (train_index, valid_index) in enumerate(kf.split(train_texts)):
     print(f"Begin Fold {fold + 1}")
+    fold_train_texts = train_texts.iloc[train_index].tolist()
+    fold_train_labels = train_labels.iloc[train_index].tolist()
+    fold_valid_texts = train_texts.iloc[valid_index].tolist()
+    fold_valid_labels = train_labels.iloc[valid_index].tolist()
 
+    fold_train_dataset = utils.ReviewDataset(fold_train_texts, fold_train_labels, tokenizer=tokenizer,
+                                             max_length=max_length)
+    fold_valid_dataset = utils.ReviewDataset(fold_valid_texts, fold_valid_labels, tokenizer=tokenizer,
+                                             max_length=max_length)
+    trainer = Trainer(
+        model=model,
+        args=training_args,
+        train_dataset=fold_train_dataset,
+        eval_dataset=fold_valid_dataset,
+        tokenizer=tokenizer,
+        compute_metrics=compute_metrics,
+    )
+
+    # Train and evaluate the model for the current fold
+    trainer.train()
+    fold_eval_metrics = trainer.evaluate()
+
+    # Store the results of the fold
+    crossval_results.append(fold_eval_metrics)
 
 
 # ---------------------------------------------------METRICS------------------------------------------------------------
 epochs = []
 
-
 # Get metrics from the evaluation
+
+"""
 eval_accuracy = eval_metrics.get("eval_accuracy", None)
 eval_precision = eval_metrics.get("eval_precision", None)
 eval_recall = eval_metrics.get("eval_recall", None)
@@ -180,6 +204,8 @@ eval_roc_auc = eval_metrics.get("eval_roc_auc", None)
 
 # Metrics logs
 logs = trainer.state.log_history
+"""
+
 
 
 

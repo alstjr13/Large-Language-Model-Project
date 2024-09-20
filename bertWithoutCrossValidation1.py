@@ -96,8 +96,6 @@ training_args = TrainingArguments(
     load_best_model_at_end=True,
 )
 
-
-
 def compute_metrics(p):
     """
     Computes the accuracy, precision, recall, F1, ROC_AUC of the input predictions
@@ -136,8 +134,6 @@ def compute_metrics(p):
         'f1': f1,
         'roc_auc': roc_auc
     }
-
-
 
 
 # Initialize Trainer to train the pre-trained model
@@ -183,37 +179,23 @@ for fold, (train_index, valid_index) in enumerate(kf.split(train_texts)):
     trainer = Trainer(
         model=model,
         args=training_args,
-    )
-
-"""
-for fold, (train_index, valid_index) in enumerate(kf.split(train_texts)):
-    print(f"Begin Fold {fold + 1}")
-    fold_train_texts = train_texts.iloc[train_index].tolist()
-    fold_train_labels = train_labels.iloc[train_index].tolist()
-    fold_valid_texts = train_texts.iloc[valid_index].tolist()
-    fold_valid_labels = train_labels.iloc[valid_index].tolist()
-
-    fold_train_dataset = utils.ReviewDataset(fold_train_texts, fold_train_labels, tokenizer=tokenizer, max_length=max_length)
-    fold_valid_dataset = utils.ReviewDataset(fold_valid_texts, fold_valid_labels, tokenizer=tokenizer, max_length=max_length)
-    trainer = Trainer(
-        model=model,
-        args=training_args,
-        train_dataset=fold_train_dataset,
-        eval_dataset=fold_valid_dataset,
+        train_dataset=crossval_train_dataset,
+        eval_dataset=crossval_validation_dataset,
         tokenizer=tokenizer,
         compute_metrics=compute_metrics,
     )
 
-    # Train and evaluate the model for the current fold
+    # Begin training
+    print("Cross validation train:")
     trainer.train()
+
     fold_eval_metrics = trainer.evaluate()
 
-    # Store the results of the fold
     crossval_results.append(fold_eval_metrics)
-"""
 
+df_crossValidation = pd.DataFrame(crossval_results)
 
-
+mean_cv_metrics = df_crossValidation.mean()
 
 # ---------------------------------------------------METRICS------------------------------------------------------------
 epochs = []

@@ -5,7 +5,6 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from torch.utils.data import Dataset
 
-
 # Create a ReviewDataset with inputs:
 # texts: reviews of the users (either incentivized or unincentivized - labelled with 0 or 1)
 # labels: corresponding label value --> 0 or 1
@@ -22,6 +21,7 @@ class ReviewDataset(Dataset):
     def __getitem__(self, idx):
         text = self.texts[idx]
         label = self.labels[idx]
+
         encoding = self.tokenizer.encode_plus(
             text,
             max_length=self.max_length,
@@ -32,7 +32,7 @@ class ReviewDataset(Dataset):
             return_tensors='pt',
         )
         return {
-            'text': text,
+            #'text': text,
             'input_ids': encoding['input_ids'].flatten(),
             'attention_mask': encoding['attention_mask'].flatten(),
             'labels': torch.tensor(label, dtype=torch.long)

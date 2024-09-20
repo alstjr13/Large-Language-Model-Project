@@ -1,13 +1,13 @@
 import os
 import warnings
+
 import numpy as np
 import pandas as pd
 from transformers import BertTokenizer, BertForSequenceClassification, Trainer, TrainingArguments
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, roc_auc_score, confusion_matrix, \
-    precision_score, recall_score, f1_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix
+from sklearn.model_selection import KFold
 import torch
-from torch.nn import CrossEntropyLoss
 from torch.utils.data import Dataset
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -15,11 +15,11 @@ import seaborn as sns
 import utils
 
 # Enable memory use
-os.environ['PYTORCH_MPS_HIGH_WATERMARK_RATIO'] = '0.0'
+#os.environ['PYTORCH_MPS_HIGH_WATERMARK_RATIO'] = '0.0'
 warnings.filterwarnings('ignore')
 
-#device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-#print(f"Using device: {device}")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Using device: {device}")
 
 # ---------------------------------------PRE-PROCESSING-DATA---------------------------------------------------------
 
@@ -64,7 +64,7 @@ tokenizer = BertTokenizer.from_pretrained('bert-large-cased')
 max_length = 512
 
 # GPU or CPU
-#model.to(device)
+model.to(device)
 
 # Create ReviewDataset(Dataset), with encodings
 trainDataset = utils.ReviewDataset(train_texts.tolist(), train_labels.tolist(), tokenizer=tokenizer, max_length=max_length)
@@ -135,31 +135,28 @@ def compute_metrics(p):
         'roc_auc': roc_auc
     }
 
-
 # Initialize Trainer to train the pre-trained model
 trainer = Trainer(
-    model=model,                        # BertForSequenceClassification.from_pretrained('bert-large-cased', num_labels=2)
+    model=model,
     args=training_args,
     train_dataset=trainDataset,
     eval_dataset=testDataset,
-    tokenizer=tokenizer,                # BertTokenizer.from_pretrained('bert-large-cased')
+    tokenizer=tokenizer,
     compute_metrics=compute_metrics,
 )
 
-
 # ----------------------------------------------------TRAINING----------------------------------------------------------
 # Train pretrained model
-#print("Beginning to train the model")
-#trainer.train()
+print("Beginning to train the model")
+trainer.train()
 
-#print("Training Done")
+print("Training Done")
 
 # Evaluate the trained model
-#print("Beginning to evaluate the model")
-#eval_metrics = trainer.evaluate()
+print("Beginning to evaluate the model")
+eval_metrics = trainer.evaluate()
 
 # ---------------------------------------------------CROSS-VALIDATION---------------------------------------------------
-from sklearn.model_selection import KFold, cross_val_score
 
 crossval_results = []
 kf = KFold(n_splits=5, shuffle=True, random_state=42)

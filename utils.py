@@ -39,24 +39,20 @@ class ReviewDataset(Dataset):
         }
 
 # Resulting data split:
-# Train = 72 %
-# Validation = 18 %
+# Train = 90 %
 # Test = 10 %
 def data_split(X, y):
     """
     Split data into 3 different dataset
-    72% Train dataset
-    18% Validation dataset
-    10% Test dataset
+    80% Train dataset
+    20% Test dataset
     :param X: pd.DataFrame including review texts, string
     :param y: pd.DataFrame including labels, either 0 or 1
-    :return: texts (train), labels (train), texts (validation), labels (validation), texts (test), labels (test)
+    :return: texts (train), labels (train), texts (test), labels (test)
     """
+    X_train, X_test, y_train, y_test = train_test_split(X,y, train_size=0.9, test_size=0.1, random_state=42, shuffle=True)
 
-    X_train_temp, X_test, y_train_temp, y_test = train_test_split(X, y, test_size=0.1, random_state=42, shuffle=True)
-    X_train, X_valid, y_train, y_valid = train_test_split(X_train_temp, y_train_temp, train_size=0.8, test_size=0.2)
-
-    return X_train, y_train, X_valid, y_valid, X_test, y_test
+    return X_train, y_train, X_test, y_test
 
 def is_nan(x) -> bool:
     """

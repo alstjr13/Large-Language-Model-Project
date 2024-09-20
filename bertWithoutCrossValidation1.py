@@ -15,11 +15,11 @@ import seaborn as sns
 import utils
 
 # Enable memory use
-#os.environ['PYTORCH_MPS_HIGH_WATERMARK_RATIO'] = '0.0'
+os.environ['PYTORCH_MPS_HIGH_WATERMARK_RATIO'] = '0.0'
 warnings.filterwarnings('ignore')
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(f"Using device: {device}")
+#device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+#print(f"Using device: {device}")
 
 # ---------------------------------------PRE-PROCESSING-DATA---------------------------------------------------------
 
@@ -51,12 +51,11 @@ df = df.rename(columns={"reviewText" : "texts", "incentivized_999": "labels"})
 X = df["texts"]
 y = df["labels"]
 
-# Split data to Train, Validation and Test (0.72 : 0.18 : 0.1 Ratio)
-train_texts, train_labels, validation_texts, validation_labels, test_texts, test_labels = utils.data_split(X, y)
+# Split data to Train, Validation and Test (0.9 : 0.1 Ratio)
+train_texts, test_texts, train_labels, test_labels = utils.data_split(X, y)
 
 # Print number of labels in splited data
 print(f"Training Set Distribution: \n {pd.Series(train_labels).value_counts()}")
-print(f"Validation Set Distribution: \n {pd.Series(validation_labels).value_counts()}")
 print(f"Test Set Distribution: \n {pd.Series(test_labels).value_counts()}")
 
 # Initialize BERT Large Model and BERT Large Tokenizer
@@ -65,14 +64,14 @@ tokenizer = BertTokenizer.from_pretrained('bert-large-cased')
 max_length = 512
 
 # GPU or CPU
-model.to(device)
+#model.to(device)
 
 # Create ReviewDataset(Dataset), with encodings
 trainDataset = utils.ReviewDataset(train_texts.tolist(), train_labels.tolist(), tokenizer=tokenizer, max_length=max_length)
-validationDataset = utils.ReviewDataset(validation_texts.tolist(), validation_labels.tolist(), tokenizer=tokenizer, max_length=max_length)
 testDataset = utils.ReviewDataset(test_texts.tolist(), test_labels.tolist(), tokenizer=tokenizer, max_length=max_length)
 
 # --------------------------------------------FINE-TUNING---------------------------------------------------------------
+
 training_args = TrainingArguments(
     output_dir='../results/bert/bertWithoutCrossValidation',
     overwrite_output_dir=True,
@@ -96,6 +95,8 @@ training_args = TrainingArguments(
     logging_steps=5,
     load_best_model_at_end=True,
 )
+
+
 
 def compute_metrics(p):
     """
@@ -136,6 +137,9 @@ def compute_metrics(p):
         'roc_auc': roc_auc
     }
 
+
+
+
 # Initialize Trainer to train the pre-trained model
 trainer = Trainer(
     model=model,                        # BertForSequenceClassification.from_pretrained('bert-large-cased', num_labels=2)
@@ -145,6 +149,7 @@ trainer = Trainer(
     tokenizer=tokenizer,                # BertTokenizer.from_pretrained('bert-large-cased')
     compute_metrics=compute_metrics,
 )
+
 
 # ----------------------------------------------------TRAINING----------------------------------------------------------
 # Train pretrained model
@@ -159,9 +164,28 @@ trainer = Trainer(
 
 # ---------------------------------------------------CROSS-VALIDATION---------------------------------------------------
 from sklearn.model_selection import KFold, cross_val_score
+
 crossval_results = []
 kf = KFold(n_splits=5, shuffle=True, random_state=42)
 
+# Perform cross validation : split the data to 5 (90 / 5 = 18) --> Train : 72%, Validation : 18%
+for fold, (train_index, valid_index) in enumerate(kf.split(train_texts)):
+    print("DEBUG \n")
+    print(f"Starting Fold {fold + 1} \n")
+    fold_train_texts = train_texts.iloc[train_index].tolist()
+    fold_train_labels = train_labels.iloc[train_index].tolist()
+    fold_valid_texts = train_texts.iloc[valid_index].tolist()
+    fold_valid_labels = train_labels.iloc[valid_index].tolist()
+
+    crossval_train_dataset = utils.ReviewDataset(fold_train_texts, fold_train_labels, tokenizer=tokenizer, max_length=max_length)
+    crossval_validation_dataset = utils.ReviewDataset(fold_valid_texts, fold_valid_labels, tokenizer=tokenizer, max_length=max_length)
+
+    trainer = Trainer(
+        model=model,
+        args=training_args,
+    )
+
+"""
 for fold, (train_index, valid_index) in enumerate(kf.split(train_texts)):
     print(f"Begin Fold {fold + 1}")
     fold_train_texts = train_texts.iloc[train_index].tolist()
@@ -169,10 +193,8 @@ for fold, (train_index, valid_index) in enumerate(kf.split(train_texts)):
     fold_valid_texts = train_texts.iloc[valid_index].tolist()
     fold_valid_labels = train_labels.iloc[valid_index].tolist()
 
-    fold_train_dataset = utils.ReviewDataset(fold_train_texts, fold_train_labels, tokenizer=tokenizer,
-                                             max_length=max_length)
-    fold_valid_dataset = utils.ReviewDataset(fold_valid_texts, fold_valid_labels, tokenizer=tokenizer,
-                                             max_length=max_length)
+    fold_train_dataset = utils.ReviewDataset(fold_train_texts, fold_train_labels, tokenizer=tokenizer, max_length=max_length)
+    fold_valid_dataset = utils.ReviewDataset(fold_valid_texts, fold_valid_labels, tokenizer=tokenizer, max_length=max_length)
     trainer = Trainer(
         model=model,
         args=training_args,
@@ -188,6 +210,9 @@ for fold, (train_index, valid_index) in enumerate(kf.split(train_texts)):
 
     # Store the results of the fold
     crossval_results.append(fold_eval_metrics)
+"""
+
+
 
 
 # ---------------------------------------------------METRICS------------------------------------------------------------

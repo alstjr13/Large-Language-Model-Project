@@ -186,6 +186,8 @@ for fold, (train_index, valid_index) in enumerate(kf.split(train_texts)):
     print("Cross validation train:")
     trainer.train()
 
+    print(f"Fold {fold+1} Train Done")
+
     fold_eval_metrics = trainer.evaluate()
 
     crossval_results.append(fold_eval_metrics)
@@ -196,10 +198,14 @@ mean_cv_metrics = df_crossValidation.mean()
 
 # ---------------------------------------------------METRICS------------------------------------------------------------
 epochs = []
+accuracy = []
+precision = []
+recall = []
+f1 = []
+roc_auc = []
+loss = []
 
 # Get metrics from the evaluation
-
-"""
 eval_accuracy = eval_metrics.get("eval_accuracy", None)
 eval_precision = eval_metrics.get("eval_precision", None)
 eval_recall = eval_metrics.get("eval_recall", None)
@@ -208,7 +214,20 @@ eval_roc_auc = eval_metrics.get("eval_roc_auc", None)
 
 # Metrics logs
 logs = trainer.state.log_history
-"""
+
+# Epoch 1, 2, 3, 4
+for log in logs:
+    if "eval_accuracy" in log:
+        epoch_value = log['epoch']
+        if epochs and epoch_value == epochs[-1]:
+            continue
+        epochs.append(epoch_value)
+        accuracy.append(log['eval_accuracy'])
+        precision.append(log['eval_precision'])
+        recall.append(log['eval_recall'])
+        f1.append(log['eval_f1'])
+        roc_auc.append(log['eval_roc_auc'])
+        loss.append(log['eval_loss'])
 
 
 

@@ -1,6 +1,6 @@
 **Note:** This repository is associated with MISR UBC Data Analytics & AI Research Group
 
-## Packages needed:
+### Packages, codes needed to learn the program:
 
 - Numpy
 - Pandas
@@ -10,6 +10,7 @@
 - matplotlib
 - seaborn
 - utils.py
+- cleanData.py
 
 ## Preliminary
 

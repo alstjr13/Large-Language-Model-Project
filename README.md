@@ -23,17 +23,28 @@ The main focus of choosing these models were based on the max_length (input)
 
 Bidirectional Encoder Representations from Transformers (BERT) was used to predict whether a review is incentivized or not incentivized using imported dataset from . 
 
-Review dataset having approximately 11,000,000 data with review texts and labels were used to train the pre-trained models.
+Review dataset having approximately 10,000,000 data with review texts and labels were used to train the pre-trained models.
 
 labels having 0 or 1: 0 indicating not incentivized and 1 meaning incentivized
+
+
+
+The <ins>main purpose</ins> of this repository is to **classifying and predicting incentivized sentences without using incentivized sentence**. 
 
 ### <ins> Terminology </ins>
 **Incentivized Review**:
 
 ### <ins> Pre-processing Data </ins>
 
-- reviews (including )
-- sample reviews were gathered as .csv file from ~~~, and disclosure sentences were masked.
+- Started with .csv file with 6,000 rows and 3 columns, where:
+  - column 1 (reviewText): English review texts from a certain website
+  - column 2 (labels): either 0 or 1
+    - **label with 0** indicating that the corresponding reviewText is **not incentivized**
+    - **label with 1** indicating that the corresponding reviewText is **incentivized**
+  - column 3 (incentivized_sentence): "English incentivized review sentence" inside reviewText
+    - i.e. English sentence with highest probability of being incentivized sentence
+- .csv file converted as Pandas DataFrame, then **incentivized sentences from column 3** were removed from column 1.
+- 
 
 ### <ins> Process of the Workflow: </ins>
 

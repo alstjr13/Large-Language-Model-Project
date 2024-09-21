@@ -1,170 +1,116 @@
 import os
+import warnings
 
 import numpy as np
 import pandas as pd
 from transformers import BertTokenizer, BertForSequenceClassification, Trainer, TrainingArguments
-from sklearn.model_selection import cross_val_score, KFold
-from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix
 from sklearn.model_selection import KFold
-from sklearn.metrics import accuracy_score, roc_auc_score, confusion_matrix, \
-    precision_score, recall_score, f1_score
-from torch.utils.data import Dataset
 import torch
 import matplotlib.pyplot as plt
-#from sklearn.utils.class_weight import compute_class_weight
-import warnings
+import seaborn as sns
+
+import utils
+
 warnings.filterwarnings('ignore')
 
-os.environ['PYTORCH_MPS_HIGH_WATERMARK_RATIO'] = '0.0'
+# Check GPU or CPU
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Using device: {device}")
 
-# Load sample data set with incentivized reviews as pd.DataFrame
-filePath = '../data/updated_review_sample_for_RA.csv'
+# ---------------------------------------PRE-PROCESSING-DATA---------------------------------------------------------
+# Load dataset:
+# reviewText                     (column 0): reviews in text... including incentivized and non-incentivized reviews
+# incentivized_999               (column 1): - 0 : non-incentivized reviews
+#                                            - 1 : incentivized reviews
+# incent_bert_highest_score_sent (column 2): sentence with highest probability of being "disclosure sentence" in reviewText
+filePath = "../data/updated_review_sample_for_RA.csv"
 df = pd.read_csv(filePath)
 
-# Delete any row that has NaN value (i.e. Clean)
-df = df.dropna(subset=["reviewText"])  # Store dropped rows in an another .csv file for records
+# Delete any row that has NaN value
+df = df.dropna(subset=["reviewText"])
 
-# Randomly select 100 incentivized reviews (Labelled with 1)
-#                 100 not incentivized reviews (Labelled with 0)
-notIncentivized = df[df["incentivized_999"] == 0].sample(n=10, random_state=42)
-incentivized = df[df["incentivized_999"] == 1].sample(n=10, random_state=42)
+# Take random samples from the dataset
+notIncentivized = df[df['incentivized_999'] == 0].sample(n=10, random_state=42)
+incentivized = df[df['incentivized_999'] == 1].sample(n=10, random_state=42)
 
-# CHECK if there is NaN value in the extracted samples:
-hasNaText = incentivized['reviewText'].isna().any()
-hasNaLabel = incentivized['incentivized_999'].isna().any()
-print(hasNaText)  # False
-print(hasNaLabel)  # False
-print("Shape of the non-incentivized:", notIncentivized.shape)  # (10, 3)
-print("Shape of the incentivized:", incentivized.shape)  # (10, 3)
+# Combine random samples, and reset index and shuffle sample
+df = pd.concat([notIncentivized, incentivized])
+df = df.sample(frac=1, random_state=42).reset_index(drop=True)
 
-# Merge two dataframes and create size = (200 x 3) pd.DataFrame
-newdf = pd.concat([notIncentivized, incentivized])
-newdf = newdf.sample(frac=1, random_state=42).reset_index(drop=True)
-print(newdf.shape)
+# Drop unnecessary column
+df = df.drop(['incent_bert_highest_score_sent'], axis=1)
 
-# Drop newdf['incent_bert_highest_score_sent'] column
-newdf = newdf.drop(['incent_bert_highest_score_sent'], axis=1)
-print(newdf)
-print(newdf.shape)
+X = df["reviewText"]
+y = df["incentivized_999"]
 
-# Check for NaN values in the entire DataFrame
-has_nan = newdf.isnull().values.any()
-print(f"Does the DataFrame contain NaN values? {has_nan}")
+# Split data to Train, Validation and Test (0.9 : 0.1 Ratio)
+train_texts, train_labels, test_texts, test_labels = utils.data_split(X, y)
 
-# Split the data
-X = newdf["reviewText"]
-y = newdf["incentivized_999"]
+# Print number of labels in splited data
+print(f"Training Set Distribution: \n {pd.Series(train_labels).value_counts()}")
+print(f"Test Set Distribution: \n {pd.Series(test_labels).value_counts()}")
 
-# Default = 8:2
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, shuffle=True)
-
-print(f"Y Training Set Distribution: \n {pd.Series(y_train).value_counts()}")
-print(f"Y Test Set Distribution: \n {pd.Series(y_test).value_counts()}")
-
-# --------------------------------------------------------------------------------------------------------------------------------
-
-# Create a ReviewDataset with inputs:
-# texts:  reviews of the users (either incentivized or unincentivized - labelled with 0 or 1)
-# labels: corresponding label value --> 0 or 1
-# tokenizer: BERT-Large Tokenizer
-# max_length: set default to 512
-class ReviewsDataset(Dataset):
-    def __init__(self, texts, labels, tokenizer, max_length=512):
-        self.texts = texts
-        self.labels = labels
-        self.tokenizer = tokenizer
-        self.max_length = max_length
-    def __len__(self):
-        return len(self.texts)
-    def __getitem__(self, idx):
-        text = self.texts[idx]
-        label = self.labels[idx]
-        encoding = self.tokenizer.encode_plus(
-            text,
-            max_length=self.max_length,
-            return_token_type_ids=False,
-            padding='max_length',
-            truncation=True,
-            return_attention_mask=True,
-            return_tensors='pt',
-        )
-        return {
-            'text': text,
-            'input_ids': encoding['input_ids'].flatten(),
-            'attention_mask': encoding['attention_mask'].flatten(),
-            'labels': torch.tensor(label, dtype=torch.long)
-        }
-
-# --------------------------------------------------------------------------------------------------------------------------------
-
-# Initialize BERT-large model and tokenizer with maxlength = 512
-model = BertForSequenceClassification.from_pretrained('bert-large-cased', num_labels=2)
+# Initialize BERT Large Model and BERT Large Tokenizer
+model = BertForSequenceClassification.from_pretrained("bert-large-cased", num_labels=2)
 tokenizer = BertTokenizer.from_pretrained('bert-large-cased')
 max_length = 512
 
-# Datasets to feed into BERT-Large: ReviewDataset(Dataset)
-train_dataset = ReviewsDataset(X_train.tolist(), y_train.tolist(), tokenizer, max_length)
-test_dataset = ReviewsDataset(X_test.tolist(), y_test.tolist(), tokenizer, max_length)
+# Create ReviewDataset(Dataset), with encodings
+trainDataset = utils.ReviewDataset(train_texts.tolist(), train_labels.tolist(), tokenizer, max_length)
+testDataset = utils.ReviewDataset(test_texts.tolist(), test_labels.tolist(), tokenizer, max_length)
 
-#optimizer: Default --> AdamW
+# model to device (GPU or CPU)
+model.to(device)
+
+# --------------------------------------------FINE-TUNING---------------------------------------------------------------
+
 training_args = TrainingArguments(
-    output_dir='./results/bert',
-    overwrite_output_dir= True,
-    do_train= True,
-    do_eval= True,
+    output_dir='../results/bert/bertCrossValidation',
+    overwrite_output_dir=True,
+    do_train=True,
+    do_eval=True,
 
-    # Alter:
-    adam_beta1=0.9,
-    adam_beta2=0.999,
-    learning_rate=3e-4,
+    # Alter
+    learning_rate=3e-5,
     per_device_train_batch_size=32,
-    per_device_eval_batch_size=32,
+    per_device_eval_batch_size=16,
+    adam_beta1=0.9,
+    adam_beta2=0.99,
 
-    # Fixed:
-    logging_dir='./logs/bert',
-    # num_train_epochs = 4 ~ 5
-    # BERT 논문 권장: 2 ~ 4
+    # Fixed
+    logging_dir='../logs/bert/bertCrossValidation',
     num_train_epochs=4,
-    eval_strategy="epoch",
-    save_strategy="epoch",
+    eval_strategy='epoch',
+    save_strategy='epoch',
     warmup_steps=500,
     weight_decay=0.01,
     logging_steps=5,
     load_best_model_at_end=True,
 )
 
-"""
-Accuracy = (TP + TN) / (TP + TN + FP + FN)
-
-Precision = TP / (TP + FP)
-
-Recall = TP / (TP + FN)
-
-F1 Score = (2 * Precision * Recall) / (Precision + Recall)
-"""
 def compute_metrics(p):
-    #predictions, labels = p
+    """
+    Computes the accuracy, precision, recall, F1, ROC_AUC of the input predictions
+    :param p: predictions
+    :return: accuracy, precision, recall, f1, roc_auc
+    """
     labels = p.label_ids
     preds = p.predictions.argmax(-1)
-    #precision, recall, f1, _ = precision_recall_fscore_support(labels, preds, average="binary")
 
-    #pred_labels = np.argmax(torch.tensor(predictions), axis=-1)
-    #pred_labels = np.argmax(pred_probs, axis=-1)
-
-    print(f"Labels: {labels}")
-    #print(f"Predicted Labels: {pred_labels}")
+    # For DEBUGGING
+    print(f"Labels: {labels} \n")
     print(f"Predictions: {preds}")
 
-    #accuracy = accuracy_score(labels, pred_labels)
     accuracy = accuracy_score(labels, preds)
-
-    precision = precision_score(labels, preds, average='weighted')
-    recall = recall_score(labels, preds, average='weighted')
-    f1 = f1_score(labels, preds, average="weighted")
+    precision = precision_score(labels, preds)
+    recall = recall_score(labels, preds)
+    f1 = f1_score(labels, preds)
     roc_auc = roc_auc_score(labels, preds)
 
     tn, fp, fn, tp = confusion_matrix(labels, preds).ravel()
 
+    # For DEBUGGING
     print(f"Accuracy: {accuracy}, \n"
           f"Precision: {precision}, \n"
           f"Recall: {recall}, \n"
@@ -182,89 +128,138 @@ def compute_metrics(p):
         'roc_auc': roc_auc
     }
 
-# Initialize the Trainer
+# Initialize Trainer to train the pre-trained model
 trainer = Trainer(
     model=model,
     args=training_args,
-    train_dataset=train_dataset,
-    eval_dataset=test_dataset,
+    train_dataset=trainDataset,
+    eval_dataset=testDataset,
     tokenizer=tokenizer,
     compute_metrics=compute_metrics,
 )
 
-# Train
+# ----------------------------------------------------TRAINING----------------------------------------------------------
+
+# Train pretrained model
 print("Beginning to train the model")
 trainer.train()
 
-# Cross validation
-#kf = KFold(n_splits=5, shuffle=True, random_state=42)
-#fold_epochs = []
-#fold_accuracies = []
-#result_kf_accuracies = []
+print("Training Done")
 
-# TODO:
-# (우선순위) 1. 파일 두개 --> bertWithCrossValidation.py , bertWithoutCrossValidation.py
-# (우선순위) 2. bertWithoutCrossValidation.py 런 해서 결과값 스크린샷 첨부 (8월31일 오후까지)
-# (우선순위) 3. cuda 사용가능 하게끔 ~~~
+# Evaluate the trained model
+print("Beginning to evaluate the model")
+eval_metrics = trainer.evaluate()
 
-# 3. + MSELoss Plot, object oriented & function
-# 4. bigbird, longformer, bert ~~ bert 를 테스트 삼아 했고, learning_rate, training_batch, training_eval 테스트 ~~~ , ~~~ 한 training argument 를 썼을때, 가장 베스트한 값이 나왔다~~~
-# 5. Final Code:
-#    a. Comment 깔끔하게
-#    b. Code 깔끔하게
-#    c. 알잘딱
-#    d. github README.md
-# ppt, 결과값 (테스트 포함) Plot 스크린샷
-# hyperparameter, learning_rate, training_bath, training_eval, ~~~~,
+# ---------------------------------------------------CROSS-VALIDATION---------------------------------------------------
 
-# Comparison 은 테이블
-"""
-# Epoch 당 cross validation 5번씩:
-for fold, (train_index, val_index) in enumerate(kf.split(X_train)):
+crossval_results = []
+crossval_accuracies = []
+mean_epoch_accuracies = []
 
-    X_train_fold, X_val_fold = X_train.iloc[train_index], X_train.iloc[val_index]
-    y_train_fold, y_val_fold = y_train.iloc[train_index], y_train.iloc[val_index]
+kf = KFold(n_splits=5, shuffle=True, random_state=42)
 
-    train_dataset = ReviewsDataset(X_train_fold.tolist(), y_train_fold.tolist(), tokenizer, max_length)
-    val_dataset = ReviewsDataset(X_val_fold.tolist(), y_val_fold.tolist(), tokenizer, max_length)
+# Perform cross validation : split the data to 5 (90 / 5 = 18) --> Train : 72%, Validation : 18%
+for fold, (train_index, valid_index) in enumerate(kf.split(train_texts)):
+    print("DEBUG \n")
+    print(f"Starting Fold {fold + 1} \n")
+    fold_train_texts = train_texts.iloc[train_index].tolist()
+    fold_train_labels = train_labels.iloc[train_index].tolist()
+    fold_valid_texts = train_texts.iloc[valid_index].tolist()
+    fold_valid_labels = train_labels.iloc[valid_index].tolist()
 
-    model = BertForSequenceClassification.from_pretrained('bert-large-cased', num_labels=2)
+    model = BertForSequenceClassification.from_pretrained("bert-large-cased", num_labels=2)
+    tokenizer = BertTokenizer.from_pretrained('bert-large-cased')
+    max_length = 512
+
+    # Create Datasets with splitted dataset through kf.split
+    crossval_train_dataset = utils.ReviewDataset(fold_train_texts, fold_train_labels, tokenizer, max_length)
+    crossval_validation_dataset = utils.ReviewDataset(fold_valid_texts, fold_valid_labels, tokenizer, max_length)
+
+    training_args_validation = TrainingArguments(
+        output_dir='../results/bert/crossValidation',
+        overwrite_output_dir=True,
+        do_train=True,
+        do_eval=True,
+
+        # Alter:
+        # TODO: try different numbers here (best number tested: lr = 3e-5, train_batch_size = 32, eval_batch_size = 16)
+        learning_rate=3e-5,
+        per_device_train_batch_size=32,
+        per_device_eval_batch_size=16,
+        adam_beta1=0.9,
+        adam_beta2=0.999,
+
+        # Fixed:
+        logging_dir='../logs/bert/crossValidation',
+        # max_grad_norm= 15,
+        num_train_epochs=4,
+        eval_strategy="epoch",
+        save_strategy="epoch",
+        warmup_steps=500,
+        weight_decay=0.01,
+        logging_steps=5,
+        load_best_model_at_end=True,
+    )
 
     trainer = Trainer(
         model=model,
-        args=training_args,
-        train_dataset=train_dataset,
-        eval_dataset=val_dataset,
+        args=training_args_validation,
+        train_dataset=crossval_train_dataset,
+        eval_dataset=crossval_validation_dataset,
         tokenizer=tokenizer,
         compute_metrics=compute_metrics,
     )
 
-    print(f"Cross validation, TRAIN, Fold {fold + 1} / 5")
+    model.to(device)
+
+    # Begin training
+    print("Cross validation train:")
     trainer.train()
 
-    # Cross validation history
-    logs_fold = trainer.state.log_history
+    print(f"Fold {fold+1} Train Done")
 
-    for log_fold in logs_fold:
-        if "eval_accuracy" in log_fold:
-            fold_epochs.append(log_fold['epoch'])
-            fold_accuracies.append(log_fold["eval_accuracy"])
+    # Access model training history to extract accuracies per epoch
+    logs_crossVal = trainer.state.log_history
 
-    #print(f"Cross validation, Test")
-    #eval_metrics_fold = trainer.evaluate()
+    # Epoch 1, 2, 3, 4
+    # [Accuracy1, Accuracy2, Accuracy3, Accuracy4]
+    fold_epoch_accuracies = [log['eval_accuracy'] for log in logs_crossVal if 'eval_accuracy' in log]
 
-    #fold_accuracies.append(eval_metrics_fold.get("eval_accuracy", None))
-    print(fold_accuracies)
+    # Load trained model from Cross Validation
+    model_path_crossVal = "../results/bert/crossValidation/checkpoint-60"
+    model_trained_crossVal = BertForSequenceClassification.from_pretrained(model_path_crossVal)
 
-    result_kf_accuracies.append(np.mean(fold_accuracies))
-    print(result_kf_accuracies)
-"""
+    test_trainer_crossVal = Trainer(model=model_trained_crossVal)
 
-# Evaluate (Test)
-print("Beginning to evaluate the model")
-eval_metrics = trainer.evaluate()
+    predictions_output = test_trainer_crossVal.predict(crossval_validation_dataset)
+    predictions = np.argmax(predictions_output.predictions, axis=1)
 
-# Metrics from the testing stage
+    y_true = fold_valid_labels
+
+    test_accuracy = accuracy_score(y_true, predictions)
+
+    # [Accuracy1, Accuracy2, Accuracy3, Accuracy4, Test] for a Fold
+    fold_epoch_accuracies.append(test_accuracy)
+
+    # Combine the result from each fold to overall result
+    # [[Fold1_Accuracy1, Fold1_Accuracy2, Fold1_Accuracy3, Fold1_Accuracy4, Fold1_Test], ... , [Fold5_Accuracy1, Fold5_Accuracy2, Fold5_Accuracy3, Fold5_Accuracy4, Fold5_Test]]
+    crossval_results.append(fold_epoch_accuracies)
+
+accuracy_results_crossVal = np.array(crossval_results)
+
+# Resulting numpy list should be: [meanAccuracyCrossValEpoch1, meanAccuracyCrossValEpoch2, meanAccuracyCrossValEpoch3, meanAccuracyCrossValEpoch4, meanAccuracyCrossValTest]
+mean_results_crossVal = np.mean(accuracy_results_crossVal, axis=0)
+
+# ---------------------------------------------------METRICS------------------------------------------------------------
+epochs = []
+accuracy = []
+precision = []
+recall = []
+f1 = []
+roc_auc = []
+loss = []
+
+# Get metrics from the evaluation
 eval_accuracy = eval_metrics.get("eval_accuracy", None)
 eval_precision = eval_metrics.get("eval_precision", None)
 eval_recall = eval_metrics.get("eval_recall", None)
@@ -274,68 +269,149 @@ eval_roc_auc = eval_metrics.get("eval_roc_auc", None)
 # Metrics logs
 logs = trainer.state.log_history
 
-epochs = []
-accuracy = []
-precision = []
-recall = []
-f1 = []
-roc_auc = []
-
+# Epoch 1, 2, 3, 4
 for log in logs:
     if "eval_accuracy" in log:
-        epochs.append(log['epoch'])
+        epoch_value = log['epoch']
+        if epochs and epoch_value == epochs[-1]:
+            continue
+        epochs.append(epoch_value)
         accuracy.append(log['eval_accuracy'])
         precision.append(log['eval_precision'])
         recall.append(log['eval_recall'])
         f1.append(log['eval_f1'])
         roc_auc.append(log['eval_roc_auc'])
+        loss.append(log['eval_loss'])
 
-epochs.append("Test")
-accuracy.append(eval_accuracy)
-precision.append(eval_precision)
-recall.append(eval_recall)
-f1.append(eval_f1)
-roc_auc.append(eval_roc_auc)
-
+"""
+print("Epochs Metrics:")
 print(epochs)
 print(accuracy)
 print(precision)
 print(recall)
 print(f1)
 print(roc_auc)
+print(loss)
+print("\n")
 
+print("Evaluation Metrics:")
+print(f"Evaluation Accuracy: {eval_accuracy}")
+print(f"Evaluation Precision: {eval_precision}")
+print(f"Evaluation Recall: {eval_recall}")
+print(f"Evaluation F1: {eval_f1}")
+print(f"Evaluation ROC_AUC: {eval_roc_auc}")
+"""
+
+model_path = '../results/bertWithoutCrossValidation/checkpoint-60'
+model_trained = BertForSequenceClassification.from_pretrained(model_path)
+
+test_trainer = Trainer(model=model_trained)
+
+predictions_output = test_trainer.predict(testDataset)
+predictions = np.argmax(predictions_output.predictions, axis=1)
+
+y_true = test_labels.tolist()
+
+test_accuracy = accuracy_score(y_true, predictions)
+test_precision = precision_score(y_true, predictions)
+test_recall = recall_score(y_true, predictions)
+test_f1 = f1_score(y_true, predictions)
+test_roc_auc = roc_auc_score(y_true, predictions)
+
+"""
+print("TEST ")
+print(f"y_true: {y_true}")
+print(f"predictions: {predictions}")
+print(f"Test Accuracy: {test_accuracy}")
+print(f"Test Precision: {test_precision}")
+print(f"Test Recall: {test_recall}")
+print(f"Test F1 Score: {test_f1}")
+print(f"Test ROC_AUC: {test_roc_auc}")
+"""
+
+print("\n Append Test Results")
+epochs.append("Test")
+accuracy.append(test_accuracy)
+precision.append(test_precision)
+recall.append(test_recall)
+f1.append(test_f1)
+roc_auc.append(test_roc_auc)
+
+cm = confusion_matrix(y_true, predictions)
+
+# Predictions
+predictions = trainer.predict(testDataset)
+
+# Load trained-model
+model_path = "./results/bertWithoutCrossValidation/checkpoint-60"
+model_trained = BertForSequenceClassification.from_pretrained(model_path)
+
+# Define test trainer
+test_trainer = Trainer(model_trained)
+
+raw_pred, _,_ = test_trainer.predict(testDataset)
+
+y_pred = np.argmax(raw_pred, axis=1)
+print("Prediction DEBUG")
+print(y_pred)
+
+# Loss function
+predictions, labels, _ = test_trainer.predict(testDataset)
+predictions = torch.tensor(predictions)
+labels = torch.tensor(labels)
+
+# Plotting
 plt.figure(figsize=(12,8))
 
+"""
+x axis : Epoch1, Epoch2, Epoch3, Epoch4, Test
+y axis : corresponding accuracy, precision, recall, f1 score, ROC_AUC score values to each epoch during training and test
+"""
+
+# Accuracy Plot
 plt.subplot(2,3,1)
-plt.plot(epochs, accuracy, label='Accuracy', marker='o')
-#plt.plot(epochs, list(result_kf_accuracies,0,0), label="Cross Validation Accuracy")
+plt.plot(epochs, accuracy, marker='o')                                 # Accuracies from training and test
+plt.plot(epochs, mean_results_crossVal, marker='x')                    # Cross validation results
 plt.xlabel('Epoch')
 plt.ylabel('Accuracy')
 plt.title('Accuracy per Epoch')
 
+# Precision Plot
 plt.subplot(2,3,2)
-plt.plot(epochs, precision, label='Precision', marker='o')
+plt.plot(epochs, precision, marker='o')                                # Precisions from training and test
 plt.xlabel('Epoch')
 plt.ylabel('Precision')
 plt.title('Precision per Epoch')
 
+# Recall Plot
 plt.subplot(2,3,3)
-plt.plot(epochs, recall, label='Recall', marker='o')
+plt.plot(epochs, recall, marker='o')                                   # Recall from training and test
 plt.xlabel('Epoch')
 plt.ylabel('Recall')
 plt.title('Recall per Epoch')
 
+# F1 Score Plot
 plt.subplot(2,3,4)
-plt.plot(epochs, f1, label='F1 Score', marker='o')
+plt.plot(epochs, f1, marker='o')                                       # F1 Score from training and test
 plt.xlabel('Epoch')
 plt.ylabel('F1 Score')
 plt.title('F1 Score per Epoch')
 
+# ROC_AUC Plot
 plt.subplot(2,3,5)
-plt.plot(epochs, roc_auc, label='ROC_AUC', marker='o')
+plt.plot(epochs, roc_auc, marker='o')                                  # ROC_AUC Score from training and test
 plt.xlabel('Epoch')
 plt.ylabel('ROC_AUC')
 plt.title('ROC_AUC per Epoch')
 
+# Heat map, confusion matrix
+plt.subplot(2,3,6)
+sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', cbar=False)
+plt.xlabel('Predicted Labels')
+plt.ylabel('True Labels')
+plt.title('Confusion Matrix')
+
 plt.tight_layout()
 plt.show()
+
+plt.savefig('plot_of_metrics.png')

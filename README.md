@@ -13,7 +13,7 @@
 - utils.py
 - cleanData.py
 
-### Preliminary <br>
+### Preliminary:
 
 3 different state-of-the-art language models were investigated, and fine-tuned to classify incentivized reviews from a given dataset.
 - Bidirectional Encoder Representation from Transformers (BERT), Large, cased

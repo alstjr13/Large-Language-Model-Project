@@ -154,6 +154,7 @@ eval_metrics = trainer.evaluate()
 
 crossval_results = []
 crossval_accuracies = []
+
 kf = KFold(n_splits=5, shuffle=True, random_state=42)
 
 # Perform cross validation : split the data to 5 (90 / 5 = 18) --> Train : 72%, Validation : 18%
@@ -169,6 +170,7 @@ for fold, (train_index, valid_index) in enumerate(kf.split(train_texts)):
     tokenizer = BertTokenizer.from_pretrained('bert-large-cased')
     max_length = 512
 
+    # Create Datasets with
     crossval_train_dataset = utils.ReviewDataset(fold_train_texts, fold_train_labels, tokenizer, max_length)
     crossval_validation_dataset = utils.ReviewDataset(fold_valid_texts, fold_valid_labels, tokenizer, max_length)
 
@@ -213,6 +215,35 @@ for fold, (train_index, valid_index) in enumerate(kf.split(train_texts)):
     trainer.train()
 
     print(f"Fold {fold+1} Train Done")
+
+    logs_crossVal = trainer.state.log_history
+
+    # Epoch 1, 2, 3, 4
+    for log in logs_crossVal:
+        if "eval_accuracy" in log:
+            epoch_value = log['epoch']
+            if epochs and epoch_value == epochs[-1]:
+                continue
+            epochs.append(epoch_value)
+            accuracy.append(log['eval_accuracy'])
+            precision.append(log['eval_precision'])
+            recall.append(log['eval_recall'])
+            f1.append(log['eval_f1'])
+            roc_auc.append(log['eval_roc_auc'])
+            loss.append(log['eval_loss'])
+
+    # Load trained model from Cross Validation
+    model_path_crossVal = "../results/bert/crossValidation/checkpoint-60"
+    model_trained_crossVal = BertForSequenceClassification.from_pretrained(model_path_crossVal)
+
+    test_trainer_crossVal = Trainer(model=model_trained_crossVal)
+
+    predictions_output = test_trainer_crossVal.predict(crossval_validation_dataset)
+    predictions = np.argmax(predictions_output.predictions, axis=1)
+
+    y_true = fold_valid_labels
+
+    test_accuracy = accuracy_score(y_true, predictions)
 
     fold_eval_metrics = trainer.evaluate()
 

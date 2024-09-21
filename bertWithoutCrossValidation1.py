@@ -12,9 +12,9 @@ import seaborn as sns
 
 import utils
 
-#os.environ['PYTORCH_MPS_HIGH_WATERMARK_RATIO'] = '0.0'
 warnings.filterwarnings('ignore')
 
+# Check GPU or CPU
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {device}")
 
@@ -60,7 +60,7 @@ max_length = 512
 trainDataset = utils.ReviewDataset(train_texts.tolist(), train_labels.tolist(), tokenizer, max_length)
 testDataset = utils.ReviewDataset(test_texts.tolist(), test_labels.tolist(), tokenizer, max_length)
 
-# GPU or CPU
+# model to device (GPU or CPU)
 model.to(device)
 
 # --------------------------------------------FINE-TUNING---------------------------------------------------------------
@@ -171,7 +171,7 @@ for fold, (train_index, valid_index) in enumerate(kf.split(train_texts)):
     tokenizer = BertTokenizer.from_pretrained('bert-large-cased')
     max_length = 512
 
-    # Create Datasets with
+    # Create Datasets with splitted dataset through kf.split
     crossval_train_dataset = utils.ReviewDataset(fold_train_texts, fold_train_labels, tokenizer, max_length)
     crossval_validation_dataset = utils.ReviewDataset(fold_valid_texts, fold_valid_labels, tokenizer, max_length)
 
@@ -182,11 +182,12 @@ for fold, (train_index, valid_index) in enumerate(kf.split(train_texts)):
         do_eval=True,
 
         # Alter:
+        # TODO: try different numbers here (best number tested: lr = 3e-5, train_batch_size = 32, eval_batch_size = 16)
         learning_rate=3e-5,
         per_device_train_batch_size=32,
         per_device_eval_batch_size=16,
         adam_beta1=0.9,
-        adam_beta2=0.99,
+        adam_beta2=0.999,
 
         # Fixed:
         logging_dir='../logs/bert/crossValidation',
@@ -315,6 +316,7 @@ test_recall = recall_score(y_true, predictions)
 test_f1 = f1_score(y_true, predictions)
 test_roc_auc = roc_auc_score(y_true, predictions)
 
+"""
 print("TEST ")
 print(f"y_true: {y_true}")
 print(f"predictions: {predictions}")
@@ -323,6 +325,7 @@ print(f"Test Precision: {test_precision}")
 print(f"Test Recall: {test_recall}")
 print(f"Test F1 Score: {test_f1}")
 print(f"Test ROC_AUC: {test_roc_auc}")
+"""
 
 print("\n Append Test Results")
 epochs.append("Test")
@@ -358,43 +361,48 @@ labels = torch.tensor(labels)
 # Plotting
 plt.figure(figsize=(12,8))
 
+"""
+x axis : Epoch1, Epoch2, Epoch3, Epoch4, Test
+y axis : corresponding accuracy, precision, recall, f1 score, ROC_AUC score values to each epoch during training and test
+"""
+
 # Accuracy Plot
 plt.subplot(2,3,1)
-plt.plot(epochs, accuracy, marker='o')
-plt.plot(epochs, mean_results_crossVal, marker='x')
+plt.plot(epochs, accuracy, marker='o')                                 # Accuracies from training and test
+plt.plot(epochs, mean_results_crossVal, marker='x')                    # Cross validation results
 plt.xlabel('Epoch')
 plt.ylabel('Accuracy')
 plt.title('Accuracy per Epoch')
 
 # Precision Plot
 plt.subplot(2,3,2)
-plt.plot(epochs, precision, marker='o')
+plt.plot(epochs, precision, marker='o')                                # Precisions from training and test
 plt.xlabel('Epoch')
 plt.ylabel('Precision')
 plt.title('Precision per Epoch')
 
 # Recall Plot
 plt.subplot(2,3,3)
-plt.plot(epochs, recall, marker='o')
+plt.plot(epochs, recall, marker='o')                                   # Recall from training and test
 plt.xlabel('Epoch')
 plt.ylabel('Recall')
 plt.title('Recall per Epoch')
 
 # F1 Score Plot
 plt.subplot(2,3,4)
-plt.plot(epochs, f1, marker='o')
+plt.plot(epochs, f1, marker='o')                                       # F1 Score from training and test
 plt.xlabel('Epoch')
 plt.ylabel('F1 Score')
 plt.title('F1 Score per Epoch')
 
 # ROC_AUC Plot
 plt.subplot(2,3,5)
-plt.plot(epochs, roc_auc, marker='o')
+plt.plot(epochs, roc_auc, marker='o')                                  # ROC_AUC Score from training and test
 plt.xlabel('Epoch')
 plt.ylabel('ROC_AUC')
 plt.title('ROC_AUC per Epoch')
 
-# Heat map
+# Heat map, confusion matrix
 plt.subplot(2,3,6)
 sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', cbar=False)
 plt.xlabel('Predicted Labels')
@@ -405,7 +413,3 @@ plt.tight_layout()
 plt.show()
 
 plt.savefig('plot_of_metrics.png')
-
-
-
-

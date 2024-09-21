@@ -1,6 +1,6 @@
 **Note:** This repository is associated with MISR UBC Data Analytics & AI Research Group
 
-### Packages, codes needed to run the program: 
+### Packages, files needed to run the program: 
 
 - Numpy
 - Pandas

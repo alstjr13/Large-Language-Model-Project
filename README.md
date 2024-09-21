@@ -71,7 +71,7 @@ trainer = Trainer(
 
 ### <ins> Process of the Workflow: </ins>
 
-- PUT IMAGE EXAMPLE
+![Diagram of the overall workflow](RA_Workflow_diagram.png)
 
 ### <ins> Hyperparameter, fine-tuning: </ins>
 

@@ -1,6 +1,6 @@
 **Note:** This repository is associated with MISR UBC Data Analytics & AI Research Group
 
-### Packages, files needed to run the program:  <br>
+### <ins> Packages, files needed to run the program:  </ins>
 
 - Numpy
 - Pandas
@@ -12,7 +12,7 @@
 - utils.py
 - cleanData.py
 
-### Preliminary <br>
+### <ins> Preliminary </ins>
 
 3 different state-of-the-art language models were investigated, and fine-tuned to classify incentivized reviews from a given dataset.
 - Bidirectional Encoder Representation from Transformers (BERT), Large, cased
@@ -27,19 +27,19 @@ Review dataset having approximately 11,000,000 data with review texts and labels
 
 labels having 0 or 1: 0 indicating not incentivized and 1 meaning incentivized
 
-## Terminology
+### <ins> Terminology </ins>
 **Incentivized Review**:
 
-## Pre-processing Data
+### <ins> Pre-processing Data </ins>
 
 - reviews (including )
 - sample reviews were gathered as .csv file from ~~~, and disclosure sentences were masked.
 
-## Process of the Workflow
+### <ins> Process of the Workflow: </ins>
 
 - Raw data (in .csv file format)
 
-## Hyperparameter, fine-tuning 
+### <ins> Hyperparameter, fine-tuning: </ins>
 
 The best hyperparameters throughout the entire experiment were:
 
@@ -63,7 +63,7 @@ Initially, hyperparameters were set to:
 
 - 
 
-## Further Studies:
+### <ins> Further Studies: </ins>
 
 To check whether the model is being trained efficiently and accurately, several things can be considered further:
 

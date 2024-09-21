@@ -3,7 +3,7 @@ import warnings
 
 import numpy as np
 import pandas as pd
-from transformers import BertTokenizer, BertForSequenceClassification, Trainer, TrainingArguments
+from transformers import AutoTokenizer, AutoModelForSequenceClassification, Trainer, TrainingArguments
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix
 from sklearn.model_selection import KFold
 import torch
@@ -52,9 +52,9 @@ print(f"Training Set Distribution: \n {pd.Series(train_labels).value_counts()}")
 print(f"Test Set Distribution: \n {pd.Series(test_labels).value_counts()}")
 
 # Initialize BERT Large Model and BERT Large Tokenizer
-model = BertForSequenceClassification.from_pretrained("bert-large-cased", num_labels=2)
-tokenizer = BertTokenizer.from_pretrained('bert-large-cased')
-max_length = 512
+model = AutoModelForSequenceClassification.from_pretrained('google/bigbird-roberta-large', num_labels=2)
+tokenizer = AutoTokenizer.from_pretrained('google/bigbird-roberta-large')
+max_length = 4096
 
 # Create ReviewDataset(Dataset), with encodings
 trainDataset = utils.ReviewDataset(train_texts.tolist(), train_labels.tolist(), tokenizer, max_length)
@@ -66,7 +66,7 @@ model.to(device)
 # --------------------------------------------FINE-TUNING---------------------------------------------------------------
 
 training_args = TrainingArguments(
-    output_dir='../results/bert/bertCrossValidation',
+    output_dir='../results/bigbird/bigbird',
     overwrite_output_dir=True,
     do_train=True,
     do_eval=True,
@@ -79,7 +79,7 @@ training_args = TrainingArguments(
     adam_beta2=0.99,
 
     # Fixed
-    logging_dir='../logs/bert/bertCrossValidation',
+    logging_dir='../logs/bigbird/bigbird',
     num_train_epochs=4,
     eval_strategy='epoch',
     save_strategy='epoch',
@@ -167,16 +167,16 @@ for fold, (train_index, valid_index) in enumerate(kf.split(train_texts)):
     fold_valid_texts = train_texts.iloc[valid_index].tolist()
     fold_valid_labels = train_labels.iloc[valid_index].tolist()
 
-    model = BertForSequenceClassification.from_pretrained("bert-large-cased", num_labels=2)
-    tokenizer = BertTokenizer.from_pretrained('bert-large-cased')
-    max_length = 512
+    model = AutoModelForSequenceClassification.from_pretrained('google/bigbird-roberta-large', num_labels=2)
+    tokenizer = AutoTokenizer.from_pretrained('google/bigbird-roberta-large')
+    max_length = 4096
 
     # Create Datasets with
     crossval_train_dataset = utils.ReviewDataset(fold_train_texts, fold_train_labels, tokenizer, max_length)
     crossval_validation_dataset = utils.ReviewDataset(fold_valid_texts, fold_valid_labels, tokenizer, max_length)
 
     training_args_validation = TrainingArguments(
-        output_dir='../results/bert/crossValidation',
+        output_dir='../results/bigbird/bigbirdCrossValidation',
         overwrite_output_dir=True,
         do_train=True,
         do_eval=True,
@@ -189,7 +189,7 @@ for fold, (train_index, valid_index) in enumerate(kf.split(train_texts)):
         adam_beta2=0.99,
 
         # Fixed:
-        logging_dir='../logs/bert/crossValidation',
+        logging_dir='../logs/bigbird/bigbirdCrossValidation',
         # max_grad_norm= 15,
         num_train_epochs=4,
         eval_strategy="epoch",
@@ -225,8 +225,9 @@ for fold, (train_index, valid_index) in enumerate(kf.split(train_texts)):
     fold_epoch_accuracies = [log['eval_accuracy'] for log in logs_crossVal if 'eval_accuracy' in log]
 
     # Load trained model from Cross Validation
-    model_path_crossVal = "../results/bert/crossValidation/checkpoint-60"
-    model_trained_crossVal = BertForSequenceClassification.from_pretrained(model_path_crossVal)
+    # TODO: Need to alter checkpoint --> load the last checkpoint
+    model_path_crossVal = "../results/bigbird/bigbirdCrossValidation/checkpoint-60"
+    model_trained_crossVal = AutoModelForSequenceClassification.from_pretrained(model_path_crossVal)
 
     test_trainer_crossVal = Trainer(model=model_trained_crossVal)
 
@@ -300,7 +301,7 @@ print(f"Evaluation F1: {eval_f1}")
 print(f"Evaluation ROC_AUC: {eval_roc_auc}")
 
 model_path = '../results/bertWithoutCrossValidation/checkpoint-60'
-model_trained = BertForSequenceClassification.from_pretrained(model_path)
+model_trained = AutoModelForSequenceClassification.from_pretrained(model_path)
 
 test_trainer = Trainer(model=model_trained)
 
@@ -338,8 +339,9 @@ cm = confusion_matrix(y_true, predictions)
 predictions = trainer.predict(testDataset)
 
 # Load trained-model
-model_path = "./results/bertWithoutCrossValidation/checkpoint-60"
-model_trained = BertForSequenceClassification.from_pretrained(model_path)
+
+model_path = "../results/bigbird/bigbird/checkpoint-60"
+model_trained = AutoModelForSequenceClassification.from_pretrained(model_path)
 
 # Define test trainer
 test_trainer = Trainer(model_trained)

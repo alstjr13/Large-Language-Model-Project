@@ -25,9 +25,7 @@ labels having 0 or 1: 0 indicating not incentivized and 1 meaning incentivized
 
 ## Process of the Workflow
 
-- Raw data (in .csv file format) 
-
-
+- Raw data (in .csv file format)
 
 ## Hyperparameter, fine-tuning 
 
@@ -53,3 +51,11 @@ Initially, hyperparameters were set to:
 
 - 
 
+## Further Studies:
+
+To check whether the model is being trained efficiently and accurately, several things can be considered further:
+
+- Loss gradient (optimization):
+  - dd
+  
+- 

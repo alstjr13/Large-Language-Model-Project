@@ -67,15 +67,15 @@ trainer = Trainer(
 ```
 
 - As training argument, number of epochs were limited to 4, and hyperparameters such as learning rate, train batch size and eval batch size were altered to fine-tune the model.
-- 
+- In summary, number of epochs set to 4, then accuracy, precision, recall, f1, roc_auc were the variables of interest during training stage.
 
 ### <ins> Process of the Workflow: </ins>
 
 ![Diagram of the overall workflow](RA_Workflow_diagram.png)
 
-### <ins> Hyperparameter, fine-tuning: </ins>
+### <ins> Hyperparameter Tuning: </ins>
 
-The best hyperparameters throughout the entire experiment were:
+Overall, the best hyperparameters throughout the entire experiment were:
 
 - learning_rate = 3e-5
   - Range tested: 1e-7 ~ 7e-5
@@ -88,7 +88,7 @@ The best hyperparameters throughout the entire experiment were:
 - adam_beta2=0.999
   - Range tested: 0.99 ~ 0.999
 
-
+### <ins> </ins>
 The focus of the experiment when altering hyperparameters were learning_rate, per_device_train_batch_size and per_device_eval_batch_size
 
 

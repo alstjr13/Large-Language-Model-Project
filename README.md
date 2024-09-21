@@ -31,7 +31,7 @@ labels having 0 or 1: 0 indicating not incentivized and 1 meaning incentivized
 The <ins>main purpose</ins> of this repository is to **classifying and predicting incentivized sentences without using incentivized sentence**. 
 
 ### <ins> Terminology </ins>
-**Incentivized Review**:
+**Incentivized Review**: TODO
 
 ### <ins> Pre-processing Data </ins>
 
@@ -88,14 +88,28 @@ Overall, the best hyperparameters throughout the entire experiment were:
 - adam_beta2=0.999
   - Range tested: 0.99 ~ 0.999
 
-### <ins> </ins>
-The focus of the experiment when altering hyperparameters were learning_rate, per_device_train_batch_size and per_device_eval_batch_size
-
-
+The focus of the experiment when altering hyperparameters were learning_rate, per_device_train_batch_size and per_device_eval_batch_size.
 
 Initially, hyperparameters were set to:
 
-- 
+- learning_rate = 7e-5
+- per_device_train_batch_size = 8
+- per_device_eval_batch_size = 4
+
+to check that the program runs successfully without any error, then hyperparameters were tuned for more higher metric values and lower cross entropy loss.
+
+### <ins> Plotting: </ins>
+
+6 different plots were programmed to be plotted in this code (Accuracy, Precision, Recall, F1 Score, ROC_AUC and Confusion Matrix)
+
+**Accuracy**
+```
+$$ 
+Accuracy = \frac{TP + TN}{TP + TN + FP + FN}
+$$
+```
+
+
 
 ### <ins> Further Studies: </ins>
 

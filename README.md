@@ -66,10 +66,12 @@ trainer = Trainer(
 )
 ```
 
+- As training argument, number of epochs were limited to 4, and hyperparameters such as learning rate, train batch size and eval batch size were altered to fine-tune the model.
+- 
 
 ### <ins> Process of the Workflow: </ins>
 
-- Raw data (in .csv file format)
+- PUT IMAGE EXAMPLE
 
 ### <ins> Hyperparameter, fine-tuning: </ins>
 

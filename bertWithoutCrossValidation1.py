@@ -283,6 +283,7 @@ for log in logs:
         roc_auc.append(log['eval_roc_auc'])
         loss.append(log['eval_loss'])
 
+"""
 print("Epochs Metrics:")
 print(epochs)
 print(accuracy)
@@ -299,6 +300,7 @@ print(f"Evaluation Precision: {eval_precision}")
 print(f"Evaluation Recall: {eval_recall}")
 print(f"Evaluation F1: {eval_f1}")
 print(f"Evaluation ROC_AUC: {eval_roc_auc}")
+"""
 
 model_path = '../results/bertWithoutCrossValidation/checkpoint-60'
 model_trained = BertForSequenceClassification.from_pretrained(model_path)

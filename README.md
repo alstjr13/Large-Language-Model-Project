@@ -1,5 +1,16 @@
 **Note:** This repository is associated with MISR UBC Data Analytics & AI Research Group
 
+## Packages needed:
+
+- Numpy
+- Pandas
+- transformers
+- scikit-learn
+- torch
+- matplotlib
+- seaborn
+- utils.py
+
 ## Preliminary
 
 3 different state-of-the-art language models were investigated, and fine-tuned to classify incentivized reviews from a given dataset.

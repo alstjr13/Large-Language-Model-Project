@@ -154,6 +154,7 @@ eval_metrics = trainer.evaluate()
 
 crossval_results = []
 crossval_accuracies = []
+mean_epoch_accuracies = []
 
 kf = KFold(n_splits=5, shuffle=True, random_state=42)
 
@@ -188,7 +189,7 @@ for fold, (train_index, valid_index) in enumerate(kf.split(train_texts)):
         adam_beta2=0.99,
 
         # Fixed:
-        logging_dir='../logs/bertWithoutCrossValidation',
+        logging_dir='../logs/bert/crossValidation',
         # max_grad_norm= 15,
         num_train_epochs=4,
         eval_strategy="epoch",
@@ -216,21 +217,12 @@ for fold, (train_index, valid_index) in enumerate(kf.split(train_texts)):
 
     print(f"Fold {fold+1} Train Done")
 
+    # Access model training history to extract accuracies per epoch
     logs_crossVal = trainer.state.log_history
 
     # Epoch 1, 2, 3, 4
-    for log in logs_crossVal:
-        if "eval_accuracy" in log:
-            epoch_value = log['epoch']
-            if epochs and epoch_value == epochs[-1]:
-                continue
-            epochs.append(epoch_value)
-            accuracy.append(log['eval_accuracy'])
-            precision.append(log['eval_precision'])
-            recall.append(log['eval_recall'])
-            f1.append(log['eval_f1'])
-            roc_auc.append(log['eval_roc_auc'])
-            loss.append(log['eval_loss'])
+    # [Accuracy1, Accuracy2, Accuracy3, Accuracy4]
+    fold_epoch_accuracies = [log['eval_accuracy'] for log in logs_crossVal if 'eval_accuracy' in log]
 
     # Load trained model from Cross Validation
     model_path_crossVal = "../results/bert/crossValidation/checkpoint-60"
@@ -245,15 +237,17 @@ for fold, (train_index, valid_index) in enumerate(kf.split(train_texts)):
 
     test_accuracy = accuracy_score(y_true, predictions)
 
-    fold_eval_metrics = trainer.evaluate()
+    # [Accuracy1, Accuracy2, Accuracy3, Accuracy4, Test] for a Fold
+    fold_epoch_accuracies.append(test_accuracy)
 
-    crossval_results.append(fold_eval_metrics)
-    fold_accuracy = fold_eval_metrics.get("eval_accuracy", None)
-    if fold_accuracy is not None:
-        crossval_accuracies.append(fold_accuracy)
+    # Combine the result from each fold to overall result
+    # [[Fold1_Accuracy1, Fold1_Accuracy2, Fold1_Accuracy3, Fold1_Accuracy4, Fold1_Test], ... , [Fold5_Accuracy1, Fold5_Accuracy2, Fold5_Accuracy3, Fold5_Accuracy4, Fold5_Test]]
+    crossval_results.append(fold_epoch_accuracies)
 
-df_crossValidation = pd.DataFrame(crossval_results)
-mean_cv_metrics = df_crossValidation.mean()
+accuracy_results_crossVal = np.array(crossval_results)
+
+# Resulting numpy list should be: [meanAccuracyCrossValEpoch1, meanAccuracyCrossValEpoch2, meanAccuracyCrossValEpoch3, meanAccuracyCrossValEpoch4, meanAccuracyCrossValTest]
+mean_results_crossVal = np.mean(accuracy_results_crossVal, axis=0)
 
 # ---------------------------------------------------METRICS------------------------------------------------------------
 epochs = []
@@ -321,7 +315,6 @@ test_recall = recall_score(y_true, predictions)
 test_f1 = f1_score(y_true, predictions)
 test_roc_auc = roc_auc_score(y_true, predictions)
 
-
 print("TEST ")
 print(f"y_true: {y_true}")
 print(f"predictions: {predictions}")
@@ -341,12 +334,11 @@ roc_auc.append(test_roc_auc)
 
 cm = confusion_matrix(y_true, predictions)
 
-
 # Predictions
 predictions = trainer.predict(testDataset)
 
 # Load trained-model
-model_path = "./results/bertWithoutCrossValidation/checkpoint-4"
+model_path = "./results/bertWithoutCrossValidation/checkpoint-60"
 model_trained = BertForSequenceClassification.from_pretrained(model_path)
 
 # Define test trainer
@@ -369,6 +361,7 @@ plt.figure(figsize=(12,8))
 # Accuracy Plot
 plt.subplot(2,3,1)
 plt.plot(epochs, accuracy, marker='o')
+plt.plot(epochs, mean_results_crossVal, marker='x')
 plt.xlabel('Epoch')
 plt.ylabel('Accuracy')
 plt.title('Accuracy per Epoch')

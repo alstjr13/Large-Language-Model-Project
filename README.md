@@ -102,12 +102,25 @@ to check that the program runs successfully without any error, then hyperparamet
 
 6 different plots were programmed to be plotted in this code (Accuracy, Precision, Recall, F1 Score, ROC_AUC and Confusion Matrix)
 
-**Accuracy**
-
 $$
 Accuracy = \frac{TP + TN}{TP + TN + FP + FN}
 $$
 
+$$
+Precision = \frac{TP}{TP + FP}
+$$
+
+$$
+Recall = \frac{TP}{TP + FN}
+$$
+
+$$
+F1 = 2 \times \frac{Precision \times Recall}{Precision + Recall}
+$$
+
+$$
+ROC_AUC = \frac{FP}{FP + TN}
+$$
 
 
 

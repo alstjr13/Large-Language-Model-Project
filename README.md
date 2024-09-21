@@ -1,6 +1,6 @@
 **Note:** This repository is associated with MISR UBC Data Analytics & AI Research Group
 
-### Packages, codes needed to learn the program:
+### Packages, codes needed to learn the program: 
 
 - Numpy
 - Pandas
@@ -12,7 +12,7 @@
 - utils.py
 - cleanData.py
 
-## Preliminary
+### Preliminary
 
 3 different state-of-the-art language models were investigated, and fine-tuned to classify incentivized reviews from a given dataset.
 - Bidirectional Encoder Representation from Transformers (BERT), Large, cased

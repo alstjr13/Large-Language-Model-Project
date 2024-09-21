@@ -1,6 +1,6 @@
 **Note:** This repository is associated with MISR UBC Data Analytics & AI Research Group
 
-### Packages, files needed to run the program: 
+### Packages, files needed to run the program:  <br>
 
 - Numpy
 - Pandas
@@ -12,7 +12,7 @@
 - utils.py
 - cleanData.py
 
-### Preliminary
+### Preliminary <br>
 
 3 different state-of-the-art language models were investigated, and fine-tuned to classify incentivized reviews from a given dataset.
 - Bidirectional Encoder Representation from Transformers (BERT), Large, cased
@@ -21,7 +21,7 @@
 
 The main focus of choosing these models were based on the max_length (input)
 
-Bidirectional Encoder Representations from Transformers (BERT) was used to predict whether a review is incentivized or not incentivized using imported dataset from -. 
+Bidirectional Encoder Representations from Transformers (BERT) was used to predict whether a review is incentivized or not incentivized using imported dataset from . 
 
 Review dataset having approximately 11,000,000 data with review texts and labels were used to train the pre-trained models.
 

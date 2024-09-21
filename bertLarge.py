@@ -76,7 +76,7 @@ training_args = TrainingArguments(
     per_device_train_batch_size=32,
     per_device_eval_batch_size=16,
     adam_beta1=0.9,
-    adam_beta2=0.99,
+    adam_beta2=0.999,
 
     # Fixed
     logging_dir='../logs/bert/bertCrossValidation',
@@ -414,4 +414,4 @@ plt.title('Confusion Matrix')
 plt.tight_layout()
 plt.show()
 
-plt.savefig('plot_of_metrics.png')
+plt.savefig('plot_of_metrics_bert.png')

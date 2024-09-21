@@ -54,16 +54,17 @@ The <ins>main purpose</ins> of this repository is to **classifying and predictin
   - Longformer_base_4096 (maximum token input: 4096 tokens)
 - Trainer, TrainingArguments from transformers package was used to train pre-trained model.
 
-'''python
+```python
+# Example of Trainer usage:
 trainer = Trainer(
-    model=model,
+    model=model,                            # BertForSequenceClassification.from_pretrained('bert-large-cased', num_labels=2)
     args=training_args,
-    train_dataset=trainDataset,
-    eval_dataset=testDataset,
-    tokenizer=tokenizer,
-    compute_metrics=compute_metrics,
+    train_dataset=training_dataset,
+    eval_dataset=test_dataset,
+    tokenizer=tokenizer,                    # BertTokenizer.from_pretrained('bert-large-cased')
+    compute_metrics=compute_metrics,        
 )
-'''
+```
 
 
 ### <ins> Process of the Workflow: </ins>

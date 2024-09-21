@@ -68,6 +68,6 @@ Initially, hyperparameters were set to:
 To check whether the model is being trained efficiently and accurately, several things can be considered further:
 
 - Loss gradient (optimization):
-  - dd
+  - I want to further investigate if plotting a 3D cross entropy loss would be possible in this case. 
   
 - 

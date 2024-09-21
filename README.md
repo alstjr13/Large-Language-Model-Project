@@ -55,7 +55,6 @@ The <ins>main purpose</ins> of this repository is to **classifying and predictin
 - Trainer, TrainingArguments from transformers package was used to train pre-trained model.
 
 '''python
-# Example of Trainer:
 trainer = Trainer(
     model=model,
     args=training_args,

@@ -28,10 +28,7 @@ Review dataset having approximately 10,000,000 data with review texts and labels
 labels having 0 or 1: 0 indicating not incentivized and 1 meaning incentivized
 
 
-The <ins>main purpose</ins> of this repository is to **classifying and predicting incentivized sentences without using incentivized sentence**. 
-
-### <ins> Terminology </ins>
-**Incentivized Review**: TODO
+The <ins>main purpose</ins> of this repository is to **classifying and predicting incentivized sentences without using incentivized sentence**.
 
 ### <ins> Pre-processing Data </ins>
 
@@ -131,4 +128,7 @@ To check whether the model is being trained efficiently and accurately, several 
 - Loss gradient (optimization):
   - I want to further investigate if plotting a 3D cross entropy loss would be possible in this case. 
   
-- 
+- RAG : would it be possible to generate "incentivized" and "not incentivized" reviews, ... 
+- K-nearest-neighbors :
+  - When masking the "incentivized sentence" within the "incentivized review text" 
+ 

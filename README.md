@@ -28,7 +28,6 @@ Review dataset having approximately 10,000,000 data with review texts and labels
 labels having 0 or 1: 0 indicating not incentivized and 1 meaning incentivized
 
 
-
 The <ins>main purpose</ins> of this repository is to **classifying and predicting incentivized sentences without using incentivized sentence**. 
 
 ### <ins> Terminology </ins>
@@ -44,7 +43,28 @@ The <ins>main purpose</ins> of this repository is to **classifying and predictin
   - column 3 (incentivized_sentence): "English incentivized review sentence" inside reviewText
     - i.e. English sentence with highest probability of being incentivized sentence
 - .csv file converted as Pandas DataFrame, then **incentivized sentences from column 3** were removed from column 1.
-- 
+- Column 3 dropped
+- Training and testing data splitted (9 : 1 Ratio) using sklearn.model_selection (train_test_split)
+
+### <ins> Training: </ins>
+- Custom dataset (ReviewDataset) object created using splitted training and testing datasets
+- 3 different models chosen, (base model used to develop code blocks : BERT_Large_cased)
+  - BERT_Large_cased (maximum token input: 512 tokens)
+  - Bigbird_RoBERTa_large (maximum token input: 4096 tokens)
+  - Longformer_base_4096 (maximum token input: 4096 tokens)
+- Trainer, TrainingArguments from transformers package was used to train pre-trained model.
+
+'''python
+# Example of Trainer:
+trainer = Trainer(
+    model=model,
+    args=training_args,
+    train_dataset=trainDataset,
+    eval_dataset=testDataset,
+    tokenizer=tokenizer,
+    compute_metrics=compute_metrics,
+)
+
 
 ### <ins> Process of the Workflow: </ins>
 

@@ -9,7 +9,7 @@
 
 The main focus of choosing these models were based on the max_length (input)
 
-Bidirectional Encoder Representations from Transformers (BERT) was used to predict whether a review is incentivized or not incentivized using imported dataset form Qiao et al. (2020). 
+Bidirectional Encoder Representations from Transformers (BERT) was used to predict whether a review is incentivized or not incentivized using imported dataset from -. 
 
 Review dataset having approximately 11,000,000 data with review texts and labels were used to train the pre-trained models.
 

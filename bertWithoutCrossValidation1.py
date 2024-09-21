@@ -89,7 +89,6 @@ training_args = TrainingArguments(
     load_best_model_at_end=True,
 )
 
-
 def compute_metrics(p):
     """
     Computes the accuracy, precision, recall, F1, ROC_AUC of the input predictions
@@ -129,7 +128,6 @@ def compute_metrics(p):
         'roc_auc': roc_auc
     }
 
-
 # Initialize Trainer to train the pre-trained model
 trainer = Trainer(
     model=model,
@@ -139,7 +137,6 @@ trainer = Trainer(
     tokenizer=tokenizer,
     compute_metrics=compute_metrics,
 )
-
 
 # ----------------------------------------------------TRAINING----------------------------------------------------------
 
@@ -152,7 +149,6 @@ print("Training Done")
 # Evaluate the trained model
 print("Beginning to evaluate the model")
 eval_metrics = trainer.evaluate()
-
 
 # ---------------------------------------------------CROSS-VALIDATION---------------------------------------------------
 
@@ -226,7 +222,6 @@ for fold, (train_index, valid_index) in enumerate(kf.split(train_texts)):
         crossval_accuracies.append(fold_accuracy)
 
 df_crossValidation = pd.DataFrame(crossval_results)
-
 mean_cv_metrics = df_crossValidation.mean()
 
 # ---------------------------------------------------METRICS------------------------------------------------------------

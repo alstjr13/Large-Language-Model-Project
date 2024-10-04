@@ -116,7 +116,7 @@ F1 = 2 \times \frac{Precision \times Recall}{Precision + Recall}
 $$
 
 $$
-ROC$_$AUC = \frac{FP}{FP + TN}
+ROCAUC = \frac{FP}{FP + TN}
 $$
 
 
